@@ -22,13 +22,26 @@ export class NayanAgent {
   private readonly faceDetector = new OnnxFaceDetector();
   async start(tabId: number, task: string, serverUrl: string): Promise<AgentRunResult> { this.active = { tabId, task, serverUrl }; this.step = 0; return this.runStep(false); }
   async confirm(): Promise<AgentRunResult> { if (!this.active) throw new Error("No active Nayan task to confirm"); return this.runStep(true); }
+  /**
+   * Static injection can be skipped when Chrome restores a tab created before
+   * the extension was installed or reloaded. Verify the receiver and inject
+   * our already-packaged content script on demand in that case.
+   */
+  private async sendToContent<T>(tabId: number, message: unknown): Promise<T> {
+    try {
+      await browser.tabs.sendMessage(tabId, { type: "NAYAN_PING" });
+    } catch {
+      await browser.scripting.executeScript({ target: { tabId }, files: ["content-scripts/content.js"] });
+    }
+    return browser.tabs.sendMessage(tabId, message) as Promise<T>;
+  }
   private async runStep(confirmed: boolean): Promise<AgentRunResult> {
     if (!this.active) throw new Error("No active Nayan task");
     const { tabId, task, serverUrl } = this.active;
     // This call creates a local-only raw frame. It is intentionally not passed to transport.
     const rawFrame = await captureLocalFrame();
-    const { nodes: domNodes } = await browser.tabs.sendMessage(tabId, { type: "NAYAN_EXTRACT_SEMANTICS" }) as { nodes: RawSemanticNode[] };
-    const ocr = await browser.tabs.sendMessage(tabId, { type: "NAYAN_SELECTIVE_OCR" }) as OcrText[];
+    const { nodes: domNodes } = await this.sendToContent<{ nodes: RawSemanticNode[] }>(tabId, { type: "NAYAN_EXTRACT_SEMANTICS" });
+    const ocr = await this.sendToContent<OcrText[]>(tabId, { type: "NAYAN_SELECTIVE_OCR" });
     const nodes = [...domNodes, ...ocr.map((result, index): RawSemanticNode => ({ id: `ocr_${index}`, tag: "canvas", role: "text", text: result.text, bbox: result.bbox, visible: true, interactive: false, disabled: false, source: ["ocr"] }))];
     const vision = await this.analyzeLocally(rawFrame.image, nodes);
     const sanitized = sanitizeSemanticNodes(nodes, this.vault);
@@ -42,7 +55,7 @@ export class NayanAgent {
     if (action.action === "done") { this.vault.clear(); this.active = undefined; return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
-    const outcome = await browser.tabs.sendMessage(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined }) as { ok: boolean; reason?: string };
+    const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });
     if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: outcome.reason };
     if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 180)); return this.runStep(false); }
     return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: "Stopped after the maximum safe step count." };
