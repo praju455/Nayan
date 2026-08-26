@@ -17,7 +17,9 @@ export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done"
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
 const activeTaskKey = "nayanActiveTask";
 
-function privateDraftInstruction(task: string): string { return task.split("\nPrivate draft text:", 1)[0] ?? task; }
+function privateDraftInstruction(task: string): string {
+  return task.split("\nPrivate chat recipient:", 1)[0]?.split("\nPrivate draft text:", 1)[0] ?? task;
+}
 function isPrivateDraftTask(task: string): boolean { return /<USER_PROVIDED_TEXT_[A-Za-z0-9_-]+>/.test(task); }
 function userRequestedSend(task: string): boolean { return /\b(send|submit)\b/i.test(privateDraftInstruction(task)); }
 
@@ -27,9 +29,9 @@ export class NayanAgent {
   private active?: ActiveTask;
   private readonly perception = new OnnxPerceptionBackend((browser.runtime as unknown as { getURL(path: string): string }).getURL("models/mobilenetv3_small.onnx"));
   private readonly faceDetector = new OnnxFaceDetector();
-  async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false, draftText?: string): Promise<AgentRunResult> {
+  async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false, draftText?: string, recipient?: string): Promise<AgentRunResult> {
     // Only the already-sanitized task survives a service-worker suspension.
-    this.active = { tabId, task: sanitizeTask(task, this.vault, draftText), serverUrl, autoSubmitDemo };
+    this.active = { tabId, task: sanitizeTask(task, this.vault, draftText, recipient), serverUrl, autoSubmitDemo };
     await browser.storage.session.set({ [activeTaskKey]: this.active });
     this.step = 0;
     return this.runStep(false);
