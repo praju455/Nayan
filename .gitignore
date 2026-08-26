@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .wxt/
+.output/
 coverage/
 .venv*/
 __pycache__/
