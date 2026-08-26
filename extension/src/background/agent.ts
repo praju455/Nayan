@@ -11,6 +11,7 @@ import type { AgentAction, RawSemanticNode, SanitizedContextPackage } from "../s
 import { browser } from "wxt/browser";
 import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
+import { alignNodesToCapture, type Viewport } from "../capture/coordinates";
 
 export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; localPreviewDataUrl?: string; message?: string }>;
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
@@ -60,9 +61,10 @@ export class NayanAgent {
     const { tabId, task, serverUrl } = this.active;
     // This call creates a local-only raw frame. It is intentionally not passed to transport.
     const rawFrame = await captureLocalFrame();
-    const { nodes: domNodes } = await this.sendToContent<{ nodes: RawSemanticNode[] }>(tabId, { type: "NAYAN_EXTRACT_SEMANTICS" });
+    const { nodes: domNodes, viewport } = await this.sendToContent<{ nodes: RawSemanticNode[]; viewport: Viewport }>(tabId, { type: "NAYAN_EXTRACT_SEMANTICS" });
     const ocr = await this.sendToContent<OcrText[]>(tabId, { type: "NAYAN_SELECTIVE_OCR" });
-    const nodes = [...domNodes, ...ocr.map((result, index): RawSemanticNode => ({ id: `ocr_${index}`, tag: "canvas", role: "text", text: result.text, bbox: result.bbox, visible: true, interactive: false, disabled: false, source: ["ocr"] }))];
+    const semanticNodes = [...domNodes, ...ocr.map((result, index): RawSemanticNode => ({ id: `ocr_${index}`, tag: "canvas", role: "text", text: result.text, bbox: result.bbox, visible: true, interactive: false, disabled: false, source: ["ocr"] }))];
+    const nodes = alignNodesToCapture(semanticNodes, viewport, rawFrame);
     const vision = await this.analyzeLocally(rawFrame.image, nodes);
     const sanitized = sanitizeSemanticNodes(nodes, this.vault);
     const faceRedactions = asFaceRedactions(await this.faceDetector.detect(rawFrame.image));
