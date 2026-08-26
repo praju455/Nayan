@@ -1,0 +1,9 @@
+{
+  "name": "@nayan/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "wxt", "build": "wxt build", "test": "vitest run", "lint": "tsc --noEmit" },
+  "dependencies": { "onnxruntime-web": "latest", "zod": "latest" },
+  "devDependencies": { "typescript": "latest", "vitest": "latest", "wxt": "latest" }
+}

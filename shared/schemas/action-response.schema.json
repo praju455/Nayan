@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nayan.local/schemas/action-response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "confidence", "reason"],
+  "properties": {
+    "action": { "enum": ["click", "type", "scroll", "select", "focus", "navigate", "wait", "done", "confirm_needed"] },
+    "targetId": { "type": "string", "maxLength": 128 },
+    "valueToken": { "type": "string", "pattern": "^[A-Z_]+_[A-Za-z0-9_-]+$" },
+    "destination": { "type": "string", "format": "uri", "maxLength": 2048 },
+    "deltaY": { "type": "number", "minimum": -5000, "maximum": 5000 },
+    "message": { "type": "string", "maxLength": 500 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "reason": { "type": "string", "maxLength": 500 }
+  }
+}

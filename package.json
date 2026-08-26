@@ -1,0 +1,13 @@
+{
+  "name": "nayan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-preserving on-device visual perception browser agent",
+  "workspaces": ["extension", "demo/mock-portal", "demo/benchmark-dashboard"],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": { "node": ">=20" }
+}

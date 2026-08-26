@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "categories": {
+    "PASSWORD": { "detect": true, "method": "black", "tokenize": false },
+    "EMAIL": { "detect": true, "method": "tokenize_and_black", "tokenize": true },
+    "PHONE": { "detect": true, "method": "tokenize_and_black", "tokenize": true },
+    "CREDIT_CARD": { "detect": true, "method": "black", "tokenize": true },
+    "PAN": { "detect": true, "method": "black", "tokenize": true },
+    "AADHAAR": { "detect": true, "method": "black", "tokenize": true },
+    "BANK_ACCOUNT": { "detect": true, "method": "black", "tokenize": true },
+    "FACE": { "detect": true, "method": "blur", "tokenize": false }
+  },
+  "confirmation": {
+    "submit": true,
+    "navigateExternal": true,
+    "delete": true,
+    "financial": true
+  }
+}

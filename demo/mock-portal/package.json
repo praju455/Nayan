@@ -1,0 +1,9 @@
+{
+  "name": "@nayan/mock-portal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "test": "vitest run --passWithNoTests" },
+  "devDependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "vitest": "latest", "typescript": "latest" },
+  "dependencies": { "@vitejs/plugin-react": "latest", "react": "latest", "react-dom": "latest" }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nayan.local/schemas/sanitized-context.schema.json",
+  "title": "Nayan sanitized context package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "taskId", "screen", "task", "elements", "redactions", "state"],
+  "properties": {
+    "protocolVersion": { "const": "1.0" },
+    "taskId": { "type": "string", "pattern": "^task_[A-Za-z0-9_-]+$" },
+    "screen": { "$ref": "#/$defs/screen" },
+    "task": { "type": "string", "maxLength": 4000 },
+    "elements": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/element" } },
+    "redactions": { "type": "array", "items": { "$ref": "#/$defs/redaction" } },
+    "state": { "$ref": "#/$defs/state" },
+    "redactedScreenshot": { "type": ["string", "null"], "contentEncoding": "base64", "maxLength": 4000000 }
+  },
+  "$defs": {
+    "screen": { "type": "object", "additionalProperties": false, "required": ["width", "height"], "properties": { "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } } },
+    "element": { "type": "object", "additionalProperties": false, "required": ["id", "role", "bbox", "visible", "interactive", "confidence", "source"], "properties": { "id": { "type": "string", "maxLength": 128 }, "role": { "type": "string", "maxLength": 64 }, "semanticType": { "type": "string", "maxLength": 64 }, "label": { "type": "string", "maxLength": 300 }, "text": { "type": "string", "maxLength": 1000 }, "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }, "visible": { "type": "boolean" }, "interactive": { "type": "boolean" }, "confidence": { "type": "number", "minimum": 0, "maximum": 1 }, "source": { "type": "array", "items": { "enum": ["dom", "aria", "vision", "ocr"] }, "minItems": 1 } } },
+    "redaction": { "type": "object", "additionalProperties": false, "required": ["type", "token", "bbox", "method"], "properties": { "type": { "type": "string" }, "token": { "type": ["string", "null"], "pattern": "^[A-Z_]+_[A-Za-z0-9_-]+$" }, "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }, "method": { "enum": ["black", "blur", "pixelate", "tokenize"] } } },
+    "state": { "type": "object", "additionalProperties": false, "required": ["step", "pageFingerprint"], "properties": { "step": { "type": "integer", "minimum": 0 }, "pageFingerprint": { "type": "string", "maxLength": 128 } } }
+  }
+}

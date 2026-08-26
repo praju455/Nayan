@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wxt/
+coverage/
+.venv*/
+__pycache__/
+*.py[cod]
+.env
+.DS_Store
+server/.pytest_cache/
+demo/benchmark-dashboard/dist/

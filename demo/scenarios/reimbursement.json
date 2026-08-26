@@ -1,0 +1,5 @@
+{
+  "name": "Synthetic reimbursement form",
+  "task": "Complete the reimbursement request using information available on the page and submit it after confirmation.",
+  "expected": ["focus", "type", "confirm_needed", "click"]
+}

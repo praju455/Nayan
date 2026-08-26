@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "token", "bbox", "method"],
+  "properties": { "type": { "type": "string" }, "token": { "type": ["string", "null"] }, "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }, "method": { "enum": ["black", "blur", "pixelate", "tokenize"] } }
+}
