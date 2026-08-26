@@ -77,7 +77,9 @@ export class NayanAgent {
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
     const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });
     if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: outcome.reason };
-    if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 180)); return this.runStep(false); }
+    // Chrome allows at most two captureVisibleTab calls per second. Leave a
+    // deliberate buffer so multi-field tasks remain reliable on every step.
+    if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 650)); return this.runStep(false); }
     return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: "Stopped after the maximum safe step count." };
   }
   private async analyzeLocally(image: ImageData, nodes: readonly RawSemanticNode[]) { await this.perception.load(); return this.perception.analyze(image, nodes.filter((node) => node.visible).map(({ id, bbox }) => ({ id, bbox }))); }
