@@ -14,6 +14,25 @@ export function createSanitizedOutput(input: { rawFrame: LocalRawFrame; taskId: 
   return { context, redactedPixels, rawPreview: input.rawFrame.image };
 }
 
+/** A downscaled redacted image for the extension UI only; never part of transport. */
+export async function localPreviewDataUrl(redactedPixels: ImageData): Promise<string> {
+  const maxWidth = 720;
+  const scale = Math.min(1, maxWidth / redactedPixels.width);
+  const width = Math.max(1, Math.round(redactedPixels.width * scale));
+  const height = Math.max(1, Math.round(redactedPixels.height * scale));
+  const source = new OffscreenCanvas(redactedPixels.width, redactedPixels.height);
+  const sourceContext = source.getContext("2d");
+  const preview = new OffscreenCanvas(width, height);
+  const previewContext = preview.getContext("2d");
+  if (!sourceContext || !previewContext) throw new Error("Local preview canvas unavailable");
+  sourceContext.putImageData(redactedPixels, 0, 0);
+  previewContext.drawImage(source, 0, 0, width, height);
+  const bytes = new Uint8Array(await (await preview.convertToBlob({ type: "image/jpeg", quality: 0.78 })).arrayBuffer());
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  return `data:image/jpeg;base64,${btoa(binary)}`;
+}
+
 /** Ensure sensitive rectangles were physically replaced before any optional image serialization. */
 export function verifyRedactions(image: ImageData, redactions: readonly RedactionRecord[]): void {
   for (const redaction of redactions) {

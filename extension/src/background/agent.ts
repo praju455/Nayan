@@ -1,7 +1,7 @@
 import { captureLocalFrame } from "../capture/local-frame";
 import { OnnxPerceptionBackend } from "../perception/backend";
 import { sanitizeSemanticNodes, sanitizeTask } from "../privacy/sanitizer";
-import { createSanitizedOutput } from "../privacy/sanitized-output";
+import { createSanitizedOutput, localPreviewDataUrl } from "../privacy/sanitized-output";
 import { asFaceRedactions, OnnxFaceDetector } from "../face/onnx-face";
 import { fuseSemanticAndVisual } from "../scene-fusion/fuse";
 import { TokenVault } from "../token-vault/token-vault";
@@ -12,7 +12,7 @@ import { browser } from "wxt/browser";
 import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
 
-export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; message?: string }>;
+export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; localPreviewDataUrl?: string; message?: string }>;
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
 const activeTaskKey = "nayanActiveTask";
 
@@ -69,21 +69,23 @@ export class NayanAgent {
     const elements = fuseSemanticAndVisual(nodes, sanitized.elements, vision);
     const redactions = [...sanitized.redactions, ...faceRedactions];
     const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task, elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
+    // The popup gets a local redacted preview; the server gets context only.
+    const preview = await localPreviewDataUrl(artifact.redactedPixels);
     // `artifact.context` is a separate sanitized object. Raw pixels are not reachable by transport.
     const action = await requestNextAction(serverUrl, assertSafePayload(artifact.context));
     if (action.action === "confirm_needed") {
       if (this.active.autoSubmitDemo) return this.runStep(true);
-      return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: action.message };
+      return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: action.message };
     }
-    if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
+    if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview }; }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
-    if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
+    if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: invalid };
     const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });
-    if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: outcome.reason };
+    if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: outcome.reason };
     // Chrome allows at most two captureVisibleTab calls per second. Leave a
     // deliberate buffer so multi-field tasks remain reliable on every step.
     if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 650)); return this.runStep(false); }
-    return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: "Stopped after the maximum safe step count." };
+    return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Stopped after the maximum safe step count." };
   }
   private async analyzeLocally(image: ImageData, nodes: readonly RawSemanticNode[]) { await this.perception.load(); return this.perception.analyze(image, nodes.filter((node) => node.visible).map(({ id, bbox }) => ({ id, bbox }))); }
   private async fingerprint(nodes: readonly RawSemanticNode[]): Promise<string> {
