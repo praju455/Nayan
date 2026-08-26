@@ -113,6 +113,20 @@ NAYAN_REASONING_TOKEN=optional-token
 
 The adapter transmits only sanitized context. The planner must return one action matching `shared/schemas/action-response.schema.json`; the server and browser each validate it before execution.
 
+### OpenAI hosted planner
+
+Nayan also includes a direct OpenAI Responses adapter with strict JSON-schema actions and `store: false`. Never place a key in the extension, source code, or chat. Instead, copy `server/.env.example` to an untracked `server/.env`, set the real key locally, then start the server with those environment variables loaded:
+
+```bash
+cd server
+cp .env.example .env
+# Edit .env locally and replace OPENAI_API_KEY. Do not commit this file.
+set -a && source .env && set +a
+.venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+The default model setting is `gpt-5`; change `NAYAN_OPENAI_MODEL` in `server/.env` only to a model available to your API project. OpenAI's Responses API supports server-side instructions, text input, `store: false`, and strict JSON-schema output, which Nayan uses to constrain the planner response. [Official OpenAI Responses API reference](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
+
 ## Never transmitted
 
 - Raw screenshots, visible-tab frames, DOM/HTML, OCR, or unredacted canvas/image crops.
