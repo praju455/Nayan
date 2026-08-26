@@ -61,5 +61,11 @@ export class NayanAgent {
     return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: "Stopped after the maximum safe step count." };
   }
   private async analyzeLocally(image: ImageData, nodes: readonly RawSemanticNode[]) { await this.perception.load(); return this.perception.analyze(image, nodes.filter((node) => node.visible).map(({ id, bbox }) => ({ id, bbox }))); }
-  private async fingerprint(nodes: readonly RawSemanticNode[]): Promise<string> { const data = new TextEncoder().encode(nodes.map(({ id, role, bbox }) => `${id}:${role}:${bbox.join(",")}`).join("|")); const digest = await crypto.subtle.digest("SHA-256", data); return [...new Uint8Array(digest)].slice(0, 8).map((byte) => byte.toString(16).padStart(2, "0")).join(""); }
+  private async fingerprint(nodes: readonly RawSemanticNode[]): Promise<string> {
+    const data = new TextEncoder().encode(nodes.map(({ id, role, bbox }) => `${id}:${role}:${bbox.join(",")}`).join("|"));
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    // An alphabetic encoding prevents a hash fragment from resembling a phone,
+    // account, Aadhaar, or card number to the outbound privacy gate.
+    return `fp_${[...new Uint8Array(digest)].slice(0, 8).map((byte) => String.fromCharCode(97 + (byte >> 4), 97 + (byte & 15))).join("")}`;
+  }
 }
