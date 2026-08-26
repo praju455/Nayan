@@ -127,6 +127,10 @@ set -a && source .env && set +a
 
 The default model setting is `gpt-5`; change `NAYAN_OPENAI_MODEL` in `server/.env` only to a model available to your API project. OpenAI's Responses API supports server-side instructions, text input, `store: false`, and strict JSON-schema output, which Nayan uses to constrain the planner response. [Official OpenAI Responses API reference](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
 
+### Gemini and Groq fallbacks
+
+Set `NAYAN_REASONING_BACKENDS` to an ordered list such as `openai,gemini,groq`. Nayan uses the first provider with a locally configured key and tries the next provider only if the current one fails to return a valid action. Gemini and Groq use their documented OpenAI-compatible chat-completions endpoints, while the same Nayan server/browser validators still enforce privacy and action policy. [Gemini compatibility guide](https://ai.google.dev/gemini-api/docs/openai) · [Groq compatibility guide](https://console.groq.com/docs/openai)
+
 ## Never transmitted
 
 - Raw screenshots, visible-tab frames, DOM/HTML, OCR, or unredacted canvas/image crops.
