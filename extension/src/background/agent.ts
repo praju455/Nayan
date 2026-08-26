@@ -13,15 +13,35 @@ import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
 
 export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; message?: string }>;
+type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string }>;
+const activeTaskKey = "nayanActiveTask";
 
 export class NayanAgent {
   private readonly vault = new TokenVault();
   private step = 0;
-  private active?: { tabId: number; task: string; serverUrl: string };
+  private active?: ActiveTask;
   private readonly perception = new OnnxPerceptionBackend((browser.runtime as unknown as { getURL(path: string): string }).getURL("models/mobilenetv3_small.onnx"));
   private readonly faceDetector = new OnnxFaceDetector();
-  async start(tabId: number, task: string, serverUrl: string): Promise<AgentRunResult> { this.active = { tabId, task, serverUrl }; this.step = 0; return this.runStep(false); }
-  async confirm(): Promise<AgentRunResult> { if (!this.active) throw new Error("No active Nayan task to confirm"); return this.runStep(true); }
+  async start(tabId: number, task: string, serverUrl: string): Promise<AgentRunResult> {
+    // Only the already-sanitized task survives a service-worker suspension.
+    this.active = { tabId, task: sanitizeTask(task, this.vault), serverUrl };
+    await browser.storage.session.set({ [activeTaskKey]: this.active });
+    this.step = 0;
+    return this.runStep(false);
+  }
+  async confirm(): Promise<AgentRunResult> {
+    if (!this.active) this.active = await this.restoreActiveTask();
+    if (!this.active) throw new Error("No active Nayan task to confirm");
+    return this.runStep(true);
+  }
+  private async restoreActiveTask(): Promise<ActiveTask | undefined> {
+    const stored = (await browser.storage.session.get(activeTaskKey))[activeTaskKey] as Partial<ActiveTask> | undefined;
+    return stored && Number.isInteger(stored.tabId) && typeof stored.task === "string" && typeof stored.serverUrl === "string" ? stored as ActiveTask : undefined;
+  }
+  private async clearActiveTask(): Promise<void> {
+    this.active = undefined;
+    await browser.storage.session.remove(activeTaskKey);
+  }
   /**
    * Static injection can be skipped when Chrome restores a tab created before
    * the extension was installed or reloaded. Verify the receiver and inject
@@ -48,11 +68,11 @@ export class NayanAgent {
     const faceRedactions = asFaceRedactions(await this.faceDetector.detect(rawFrame.image));
     const elements = fuseSemanticAndVisual(nodes, sanitized.elements, vision);
     const redactions = [...sanitized.redactions, ...faceRedactions];
-    const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task: sanitizeTask(task, this.vault), elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
+    const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task, elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
     // `artifact.context` is a separate sanitized object. Raw pixels are not reachable by transport.
     const action = await requestNextAction(serverUrl, assertSafePayload(artifact.context));
     if (action.action === "confirm_needed") return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: action.message };
-    if (action.action === "done") { this.vault.clear(); this.active = undefined; return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
+    if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
     const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });
