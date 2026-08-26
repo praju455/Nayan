@@ -9,13 +9,29 @@ export type SanitizationResult = Readonly<{ elements: SanitizedElement[]; redact
 
 function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory): { value: string; records: { category: PiiCategory; token: string | null }[] } {
   // DOM semantics are stronger than a generic numeric recognizer for form values.
-  const matches = fallback && value ? [{ category: fallback, value, start: 0, end: value.length, confidence: 1 }] : recognizePii(value);
+  const privateTaskValue = !fallback && value ? vault.findByValue(value) : undefined;
+  const matches = fallback && value
+    ? [{ category: fallback, value, start: 0, end: value.length, confidence: 1 }]
+    : privateTaskValue
+      ? [{ category: privateTaskValue.category, value, start: 0, end: value.length, confidence: 1 }]
+      : recognizePii(value);
   let offset = 0; let sanitized = value; const records: { category: PiiCategory; token: string | null }[] = [];
-  for (const match of matches) { const token = match.category === "PASSWORD" ? null : vault.tokenize(match.category, match.value); const replacement = token ? `<${token}>` : "<PASSWORD_FIELD>"; const start = match.start + offset; sanitized = `${sanitized.slice(0, start)}${replacement}${sanitized.slice(start + match.value.length)}`; offset += replacement.length - match.value.length; records.push({ category: match.category, token }); }
+  for (const match of matches) { const token = match.category === "PASSWORD" ? null : privateTaskValue?.category === match.category && privateTaskValue.token ? privateTaskValue.token : vault.tokenize(match.category, match.value); const replacement = token ? `<${token}>` : "<PASSWORD_FIELD>"; const start = match.start + offset; sanitized = `${sanitized.slice(0, start)}${replacement}${sanitized.slice(start + match.value.length)}`; offset += replacement.length - match.value.length; records.push({ category: match.category, token }); }
   return { value: sanitized, records };
 }
 
-export function sanitizeTask(task: string, vault: TokenVault): string { return replacePii(task, vault).value; }
+/**
+ * The task instruction can be sent only after ordinary PII replacement. Any
+ * exact text that Nayan may type is more sensitive: it is always represented
+ * by a task-scoped token, even when it does not look like conventional PII.
+ */
+export function sanitizeTask(task: string, vault: TokenVault, draftText?: string): string {
+  const instruction = replacePii(task, vault).value;
+  const privateDraft = draftText?.trim();
+  if (!privateDraft) return instruction;
+  const token = vault.tokenize("USER_PROVIDED_TEXT", privateDraft);
+  return `${instruction}\nPrivate draft text: <${token}>. Type it only into a visible message composer or text field. Never send, submit, or click a send control.`;
+}
 
 export function sanitizeSemanticNodes(nodes: readonly RawSemanticNode[], vault: TokenVault): SanitizationResult {
   const redactions: RedactionRecord[] = [];

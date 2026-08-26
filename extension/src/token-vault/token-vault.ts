@@ -1,6 +1,6 @@
 import type { PiiCategory } from "../shared/types";
 
-type VaultEntry = Readonly<{ value: string; expiresAt: number }>;
+type VaultEntry = Readonly<{ category: PiiCategory; value: string; expiresAt: number }>;
 
 /** In-memory and task-scoped by default. Plaintext entries never enter telemetry or transport. */
 export class TokenVault {
@@ -12,10 +12,17 @@ export class TokenVault {
     const count = (this.counters.get(category) ?? 0) + 1;
     this.counters.set(category, count);
     const token = `${category}_${count}_${crypto.randomUUID().slice(0, 8)}`;
-    this.entries.set(token, { value, expiresAt: Date.now() + this.ttlMs });
+    this.entries.set(token, { category, value, expiresAt: Date.now() + this.ttlMs });
     return token;
   }
   resolve(token: string): string | undefined { const entry = this.entries.get(token); if (!entry || entry.expiresAt <= Date.now()) { this.entries.delete(token); return undefined; } return entry.value; }
   has(token: string): boolean { return this.resolve(token) !== undefined; }
+  findByValue(value: string): { token: string; category: PiiCategory } | undefined {
+    for (const [token, entry] of this.entries) {
+      if (entry.expiresAt <= Date.now()) { this.entries.delete(token); continue; }
+      if (entry.value === value) return { token, category: entry.category };
+    }
+    return undefined;
+  }
   clear(): void { this.entries.clear(); this.counters.clear(); }
 }
