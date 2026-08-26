@@ -18,7 +18,7 @@ const detected = (text) => { const values = rules.flatMap(([category, expression
 let tp = 0; let fp = 0; let fn = 0;
 for (const fixture of piiFixtures) { const actual = new Set(detected(fixture.text)); const expected = new Set(fixture.expected); for (const type of actual) expected.has(type) ? tp++ : fp++; for (const type of expected) if (!actual.has(type)) fn++; }
 const precision = tp / (tp + fp || 1); const recall = tp / (tp + fn || 1); const visualAccuracy = visualFixtures.filter((fixture) => fixture.expected === fixture.predicted).length / visualFixtures.length;
-const files = ["extension/public/models/mobilenetv3_small.onnx", "extension/public/models/ultraface-rfb-320.onnx", "extension/public/ort/ort-wasm-simd-threaded.wasm"];
+const files = ["extension/public/models/mobilenetv3_small.onnx", "extension/public/models/ultraface-rfb-320.onnx", "extension/public/ort/ort-wasm-simd-threaded.wasm", "extension/public/ocr/eng.traineddata.gz", "extension/public/ocr/tesseract-core-simd-lstm.wasm.js", "extension/public/ocr/worker.min.js"];
 const bundleBytes = (await Promise.all(files.map(async (file) => (await stat(join(root, file))).size))).reduce((sum, bytes) => sum + bytes, 0);
 const result = { generatedAt: new Date().toISOString(), source: "synthetic labelled fixtures", metrics: { visualContextAccuracy: visualAccuracy, piiPrecision: precision, piiRecall: recall, piiF1: 2 * precision * recall / (precision + recall || 1), redactionVerificationPassRate: 1, localRuntimeBytes: bundleBytes }, counts: { piiTruePositives: tp, piiFalsePositives: fp, piiFalseNegatives: fn, visualFixtures: visualFixtures.length } };
 await writeFile(join(root, "shared/eval/results/latest.json"), `${JSON.stringify(result, null, 2)}\n`);

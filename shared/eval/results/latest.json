@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T11:40:29.152Z",
+  "generatedAt": "2026-08-26T11:46:31.716Z",
   "source": "synthetic labelled fixtures",
   "metrics": {
     "visualContextAccuracy": 1,
@@ -7,7 +7,7 @@
     "piiRecall": 1,
     "piiF1": 1,
     "redactionVerificationPassRate": 1,
-    "localRuntimeBytes": 21375108
+    "localRuntimeBytes": 27370160
   },
   "counts": {
     "piiTruePositives": 6,

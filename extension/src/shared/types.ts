@@ -5,7 +5,7 @@ declare const localRawFrameBrand: unique symbol;
 /** Local-only. This type must never be imported by transport modules. */
 export type LocalRawFrame = Readonly<{ image: ImageData; width: number; height: number; createdAt: number; [localRawFrameBrand]: true }>;
 
-export type RawSemanticNode = Readonly<{ id: string; tag: string; role: string; label?: string; text?: string; value?: string; inputType?: string; autocomplete?: string; bbox: BoundingBox; visible: boolean; interactive: boolean; disabled: boolean; source: readonly ("dom" | "aria")[] }>;
+export type RawSemanticNode = Readonly<{ id: string; tag: string; role: string; label?: string; text?: string; value?: string; inputType?: string; autocomplete?: string; bbox: BoundingBox; visible: boolean; interactive: boolean; disabled: boolean; source: readonly ("dom" | "aria" | "ocr")[] }>;
 export type VisualElement = Readonly<{ id: string; type: string; bbox: BoundingBox; confidence: number }>;
 export type SanitizedElement = Readonly<{ id: string; role: string; semanticType?: string; label?: string; text?: string; bbox: BoundingBox; visible: boolean; interactive: boolean; confidence: number; source: readonly ("dom" | "aria" | "vision" | "ocr")[] }>;
 export type RedactionRecord = Readonly<{ type: PiiCategory; token: string | null; bbox: BoundingBox; method: "black" | "blur" | "pixelate" | "tokenize" }>;
