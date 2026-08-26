@@ -13,7 +13,7 @@ import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
 
 export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; message?: string }>;
-type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string }>;
+type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
 const activeTaskKey = "nayanActiveTask";
 
 export class NayanAgent {
@@ -22,9 +22,9 @@ export class NayanAgent {
   private active?: ActiveTask;
   private readonly perception = new OnnxPerceptionBackend((browser.runtime as unknown as { getURL(path: string): string }).getURL("models/mobilenetv3_small.onnx"));
   private readonly faceDetector = new OnnxFaceDetector();
-  async start(tabId: number, task: string, serverUrl: string): Promise<AgentRunResult> {
+  async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false): Promise<AgentRunResult> {
     // Only the already-sanitized task survives a service-worker suspension.
-    this.active = { tabId, task: sanitizeTask(task, this.vault), serverUrl };
+    this.active = { tabId, task: sanitizeTask(task, this.vault), serverUrl, autoSubmitDemo };
     await browser.storage.session.set({ [activeTaskKey]: this.active });
     this.step = 0;
     return this.runStep(false);
@@ -36,7 +36,7 @@ export class NayanAgent {
   }
   private async restoreActiveTask(): Promise<ActiveTask | undefined> {
     const stored = (await browser.storage.session.get(activeTaskKey))[activeTaskKey] as Partial<ActiveTask> | undefined;
-    return stored && Number.isInteger(stored.tabId) && typeof stored.task === "string" && typeof stored.serverUrl === "string" ? stored as ActiveTask : undefined;
+    return stored && Number.isInteger(stored.tabId) && typeof stored.task === "string" && typeof stored.serverUrl === "string" ? { ...stored, autoSubmitDemo: stored.autoSubmitDemo === true } as ActiveTask : undefined;
   }
   private async clearActiveTask(): Promise<void> {
     this.active = undefined;
@@ -71,7 +71,10 @@ export class NayanAgent {
     const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task, elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
     // `artifact.context` is a separate sanitized object. Raw pixels are not reachable by transport.
     const action = await requestNextAction(serverUrl, assertSafePayload(artifact.context));
-    if (action.action === "confirm_needed") return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: action.message };
+    if (action.action === "confirm_needed") {
+      if (this.active.autoSubmitDemo) return this.runStep(true);
+      return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: action.message };
+    }
     if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
