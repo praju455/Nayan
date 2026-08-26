@@ -1,6 +1,8 @@
 import type { BoundingBox, RawSemanticNode } from "../shared/types";
 
-const selector = "button, a, input, textarea, select, [role], [contenteditable='true'], img, canvas, label";
+// Labels describe controls but are not independently sensitive regions. The
+// actual input/select owns the value and its exact box is what we redact.
+const selector = "button, a, input, textarea, select, [role], [contenteditable='true'], img, canvas";
 
 function boundingBox(element: Element): BoundingBox {
   const box = element.getBoundingClientRect();
