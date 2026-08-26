@@ -1,0 +1,6 @@
+[
+  { "id": "submit-button", "expected": "button", "predicted": "button" },
+  { "id": "email-input", "expected": "text_input", "predicted": "text_input" },
+  { "id": "department", "expected": "dropdown", "predicted": "dropdown" },
+  { "id": "avatar", "expected": "image", "predicted": "image" }
+]

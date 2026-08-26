@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-08-26T11:40:29.152Z",
+  "source": "synthetic labelled fixtures",
+  "metrics": {
+    "visualContextAccuracy": 1,
+    "piiPrecision": 1,
+    "piiRecall": 1,
+    "piiF1": 1,
+    "redactionVerificationPassRate": 1,
+    "localRuntimeBytes": 21375108
+  },
+  "counts": {
+    "piiTruePositives": 6,
+    "piiFalsePositives": 0,
+    "piiFalseNegatives": 0,
+    "visualFixtures": 4
+  }
+}

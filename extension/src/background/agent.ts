@@ -11,7 +11,7 @@ import type { AgentAction, RawSemanticNode, SanitizedContextPackage } from "../s
 import { browser } from "wxt/browser";
 import { validateLocalAction } from "../action/validator";
 
-export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; message?: string }>;
+export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; message?: string }>;
 
 export class NayanAgent {
   private readonly vault = new TokenVault();
@@ -35,14 +35,14 @@ export class NayanAgent {
     const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task: sanitizeTask(task, this.vault), elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
     // `artifact.context` is a separate sanitized object. Raw pixels are not reachable by transport.
     const action = await requestNextAction(serverUrl, assertSafePayload(artifact.context));
-    if (action.action === "confirm_needed") return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, message: action.message };
-    if (action.action === "done") { this.vault.clear(); this.active = undefined; return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime }; }
+    if (action.action === "confirm_needed") return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: action.message };
+    if (action.action === "done") { this.vault.clear(); this.active = undefined; return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context }; }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
-    if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, message: invalid };
+    if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: invalid };
     const outcome = await browser.tabs.sendMessage(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined }) as { ok: boolean; reason?: string };
-    if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, message: outcome.reason };
+    if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: outcome.reason };
     if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 180)); return this.runStep(false); }
-    return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, message: "Stopped after the maximum safe step count." };
+    return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, message: "Stopped after the maximum safe step count." };
   }
   private async analyzeLocally(image: ImageData, nodes: readonly RawSemanticNode[]) { await this.perception.load(); return this.perception.analyze(image, nodes.filter((node) => node.visible).map(({ id, bbox }) => ({ id, bbox }))); }
   private async fingerprint(nodes: readonly RawSemanticNode[]): Promise<string> { const data = new TextEncoder().encode(nodes.map(({ id, role, bbox }) => `${id}:${role}:${bbox.join(",")}`).join("|")); const digest = await crypto.subtle.digest("SHA-256", data); return [...new Uint8Array(digest)].slice(0, 8).map((byte) => byte.toString(16).padStart(2, "0")).join(""); }

@@ -1,0 +1,9 @@
+[
+  { "id": "email", "text": "Reach ari@example.in", "expected": ["EMAIL"] },
+  { "id": "phone", "text": "Call +91 9876543210", "expected": ["PHONE"] },
+  { "id": "card", "text": "Card: 4111 1111 1111 1111", "expected": ["CREDIT_CARD"] },
+  { "id": "pan", "text": "PAN ABCDE1234F", "expected": ["PAN"] },
+  { "id": "aadhar", "text": "Aadhaar 2345 6789 0124", "expected": ["AADHAAR"] },
+  { "id": "bank", "text": "Account 123456789012", "expected": ["BANK_ACCOUNT"] },
+  { "id": "negative-card", "text": "Reference 1234 5678 9012 3456", "expected": [] }
+]

@@ -8,8 +8,8 @@ const emptyBox: readonly [number, number, number, number] = [0, 0, 0, 0];
 export type SanitizationResult = Readonly<{ elements: SanitizedElement[]; redactions: RedactionRecord[] }>;
 
 function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory): { value: string; records: { category: PiiCategory; token: string | null }[] } {
-  const matches = recognizePii(value);
-  if (fallback && matches.length === 0 && value) matches.push({ category: fallback, value, start: 0, end: value.length, confidence: 1 });
+  // DOM semantics are stronger than a generic numeric recognizer for form values.
+  const matches = fallback && value ? [{ category: fallback, value, start: 0, end: value.length, confidence: 1 }] : recognizePii(value);
   let offset = 0; let sanitized = value; const records: { category: PiiCategory; token: string | null }[] = [];
   for (const match of matches) { const token = match.category === "PASSWORD" ? null : vault.tokenize(match.category, match.value); const replacement = token ? `<${token}>` : "<PASSWORD_FIELD>"; const start = match.start + offset; sanitized = `${sanitized.slice(0, start)}${replacement}${sanitized.slice(start + match.value.length)}`; offset += replacement.length - match.value.length; records.push({ category: match.category, token }); }
   return { value: sanitized, records };

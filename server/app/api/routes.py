@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.context.builder import build_reasoning_context
-from app.reasoning.backend import SafeRuleReasoningBackend
+from app.reasoning.backend import configured_backend
 from app.schemas.models import ActionResponse, SanitizedContext
 from app.security.privacy_gate import enforce_privacy_boundary
 from app.validator.action_validator import validate_server_action
@@ -18,5 +18,5 @@ async def health() -> dict[str, str]:
 async def next_action(context: SanitizedContext) -> ActionResponse:
     # Validate raw inbound JSON after strict parsing; never log request content.
     enforce_privacy_boundary(context.model_dump(mode="json"))
-    action = await SafeRuleReasoningBackend().next_action(context, build_reasoning_context(context))
+    action = await configured_backend().next_action(context, build_reasoning_context(context))
     return validate_server_action(action, context)
