@@ -12,6 +12,8 @@ import { browser } from "wxt/browser";
 import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
 import { alignNodesToCapture, type Viewport } from "../capture/coordinates";
+import { confirmationForAction } from "../policy/action-policy";
+import { isSiteAllowed } from "../policy/site-policy";
 
 export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; localPreviewDataUrl?: string; message?: string }>;
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
@@ -86,6 +88,14 @@ export class NayanAgent {
       return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: action.message };
     }
     if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview }; }
+    if (action.action === "navigate" && action.destination && !(await isSiteAllowed(action.destination))) {
+      return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "The destination site is not approved. Approve it before Nayan can navigate there." };
+    }
+    const confirmation = confirmationForAction(action, elements);
+    if (confirmation && !confirmed) {
+      const confirmationAction: AgentAction = { action: "confirm_needed", confidence: 0.99, reason: confirmation.reason, message: confirmation.message };
+      return { status: "confirmation_required", action: confirmationAction, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: confirmation.message };
+    }
     const invalid = validateLocalAction(action, elements, (token) => this.vault.has(token));
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: invalid };
     const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });

@@ -24,7 +24,7 @@ function visible(element: HTMLElement): boolean {
   return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0 && box.width > 0 && box.height > 0;
 }
 
-function recipientTarget(value: string): HTMLElement | undefined {
+function visibleTextTarget(value: string): HTMLElement | undefined {
   const expected = normalizeText(value);
   const interactive = "a, button, [role='button'], [role='link'], [tabindex]";
   const candidates = [...document.querySelectorAll<HTMLElement>(interactive)].filter(visible);
@@ -55,11 +55,11 @@ export function executeAction(action: AgentAction, resolveToken: (token: string)
       return { ok: false, reason: "Token or text field unavailable" };
     }
     case "select": { const value = action.valueToken ? resolveToken(action.valueToken) : undefined; if (value === undefined || !(element instanceof HTMLSelectElement)) return { ok: false, reason: "Token or select field unavailable" }; element.focus(); element.value = value; element.dispatchEvent(new Event("input", { bubbles: true })); element.dispatchEvent(new Event("change", { bubbles: true })); return { ok: true }; }
-    case "select_recipient": {
+    case "click_visible_text": {
       const value = action.valueToken ? resolveToken(action.valueToken) : undefined;
-      const recipient = value ? recipientTarget(value) : undefined;
-      if (!recipient) return { ok: false, reason: "The requested conversation is not visible in the current search results." };
-      recipient.click();
+      const textTarget = value ? visibleTextTarget(value) : undefined;
+      if (!textTarget) return { ok: false, reason: "The requested text is not visible in the current page results." };
+      textTarget.click();
       return { ok: true };
     }
     case "scroll": window.scrollBy({ top: action.deltaY ?? 500, behavior: "smooth" }); return { ok: true };

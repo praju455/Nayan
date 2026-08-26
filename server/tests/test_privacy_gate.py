@@ -102,5 +102,5 @@ def test_planner_searches_then_selects_a_private_recipient_locally() -> None:
     assert first.json()["valueToken"] == "USER_SELECTED_RECIPIENT_1_a1"
     second = TestClient(app).post("/v1/agent/next-action", json={**start, "state": {"step": 1, "pageFingerprint": "abcdef"}})
     assert second.status_code == 200
-    assert second.json()["action"] == "select_recipient"
+    assert second.json()["action"] == "click_visible_text"
     assert second.json()["valueToken"] == "USER_SELECTED_RECIPIENT_1_a1"

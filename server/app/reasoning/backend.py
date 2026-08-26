@@ -46,10 +46,10 @@ class SafeRuleReasoningBackend:
                 )
             if scene.state.step == 1:
                 return ActionResponse(
-                    action="select_recipient",
+                    action="click_visible_text",
                     valueToken=recipient_token.group(1),
                     confidence=0.94,
-                    reason="Select only the exact visible conversation matching the locally held recipient.",
+                    reason="Click only the exact visible text matching the locally held recipient.",
                 )
 
         # General, locally-tokenized message drafting. This intentionally has
