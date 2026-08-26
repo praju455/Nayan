@@ -17,6 +17,10 @@ export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done"
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
 const activeTaskKey = "nayanActiveTask";
 
+function privateDraftInstruction(task: string): string { return task.split("\nPrivate draft text:", 1)[0] ?? task; }
+function isPrivateDraftTask(task: string): boolean { return /<USER_PROVIDED_TEXT_[A-Za-z0-9_-]+>/.test(task); }
+function userRequestedSend(task: string): boolean { return /\b(send|submit)\b/i.test(privateDraftInstruction(task)); }
+
 export class NayanAgent {
   private readonly vault = new TokenVault();
   private step = 0;
@@ -89,9 +93,23 @@ export class NayanAgent {
     // itself, so re-reading the page could otherwise look like an empty field
     // and repeat the draft. Stop before a second pass, never near Send.
     if (action.action === "type" && action.valueToken?.startsWith("USER_PROVIDED_TEXT_")) {
+      if (userRequestedSend(task)) {
+        const confirmation: AgentAction = {
+          action: "confirm_needed",
+          confidence: 0.99,
+          reason: "The private message draft is ready. Sending it is an external action and requires one final confirmation.",
+          message: "Send this drafted message?",
+        };
+        return { status: "confirmation_required", action: confirmation, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: confirmation.message };
+      }
       this.vault.clear();
       await this.clearActiveTask();
       return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Draft entered locally. Nayan stopped without sending it." };
+    }
+    if (confirmed && action.action === "click" && isPrivateDraftTask(task) && userRequestedSend(task)) {
+      this.vault.clear();
+      await this.clearActiveTask();
+      return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Message sent after your confirmation." };
     }
     // Chrome allows at most two captureVisibleTab calls per second. Leave a
     // deliberate buffer so multi-field tasks remain reliable on every step.

@@ -69,3 +69,19 @@ def test_planner_stops_after_one_private_draft_action() -> None:
     response = TestClient(app).post("/v1/agent/next-action", json=payload)
     assert response.status_code == 200
     assert response.json()["action"] == "done"
+
+
+def test_planner_clicks_send_only_after_message_confirmation() -> None:
+    payload = {
+        **safe_payload,
+        "task": "Send the drafted message. Private draft text: <USER_PROVIDED_TEXT_1_a1>.",
+        "state": {"step": 1, "pageFingerprint": "abcdef", "confirmed": True},
+        "elements": [
+            {"id": "composer", "role": "textbox", "semanticType": "contenteditable", "label": "Message", "text": "<USER_PROVIDED_TEXT_1_a1>", "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["aria"]},
+            {"id": "send", "role": "button", "label": "Send", "text": "Send", "bbox": [1, 12, 20, 22], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
+        ],
+    }
+    response = TestClient(app).post("/v1/agent/next-action", json=payload)
+    assert response.status_code == 200
+    assert response.json()["action"] == "click"
+    assert response.json()["targetId"] == "send"

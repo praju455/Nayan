@@ -15,18 +15,44 @@ class SafeRuleReasoningBackend:
     """Deterministic demo planner; it reasons only over an already-sanitized scene."""
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
-        task = scene.task.lower()
+        # The extension appends a safety note containing the words "send" and
+        # "submit". Only the original user instruction may authorize the
+        # confirmation pathway.
+        task = scene.task.split("\nPrivate draft text:", 1)[0].lower()
 
         # General, locally-tokenized message drafting. This intentionally has
         # no send/click branch: drafting is reversible, while sending remains
         # an explicit high-impact action that must be confirmed separately.
         draft_token = re.search(r"<(USER_PROVIDED_TEXT_[A-Za-z0-9_-]+)>", scene.task)
-        if draft_token and any(word in task for word in ("draft", "message", "type", "write")):
-            if scene.state.step > 0:
+        if draft_token and any(word in task for word in ("draft", "message", "type", "write", "send")):
+            requested_send = bool(re.search(r"\b(send|submit)\b", task))
+            if scene.state.confirmed and requested_send:
+                send_control = next(
+                    (
+                        element for element in scene.elements
+                        if element.interactive and element.role == "button"
+                        and re.search(r"\bsend\b", " ".join(filter(None, [element.label, element.text])), re.IGNORECASE)
+                    ),
+                    None,
+                )
+                if send_control:
+                    return ActionResponse(
+                        action="click",
+                        targetId=send_control.id,
+                        confidence=0.97,
+                        reason="The user reviewed the drafted message and explicitly confirmed sending it.",
+                    )
                 return ActionResponse(
                     action="done",
+                    confidence=0.9,
+                    reason="The message was drafted, but no visible Send control is available to confirm.",
+                )
+            if scene.state.step > 0:
+                return ActionResponse(
+                    action="confirm_needed" if requested_send else "done",
                     confidence=0.99,
-                    reason="The private message draft has already been entered. Stopping without sending it.",
+                    reason="The private message draft is ready. Sending it requires final user confirmation." if requested_send else "The private message draft has already been entered. Stopping without sending it.",
+                    message="Send this drafted message?" if requested_send else None,
                 )
             textboxes = [
                 element for element in scene.elements
