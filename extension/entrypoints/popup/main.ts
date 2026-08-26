@@ -8,6 +8,7 @@ const task = document.querySelector<HTMLTextAreaElement>("#task")!;
 const start = document.querySelector<HTMLButtonElement>("#start")!;
 const confirm = document.querySelector<HTMLButtonElement>("#confirm")!;
 const autoDemo = document.querySelector<HTMLInputElement>("#auto-demo")!;
+const allowSite = document.querySelector<HTMLButtonElement>("#allow-site")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const payload = document.querySelector<HTMLElement>("#payload")!;
 const preview = document.querySelector<HTMLImageElement>("#preview")!;
@@ -16,3 +17,4 @@ function show(result: Result): void { status.textContent = `${result.status.repl
 async function send(type: "NAYAN_START" | "NAYAN_CONFIRM"): Promise<void> { try { const result = await browser.runtime.sendMessage(type === "NAYAN_START" ? { type, task: task.value, autoSubmitDemo: autoDemo.checked } : { type }) as Result; show(result); } catch (error) { status.textContent = error instanceof Error ? error.message : "Nayan could not safely continue."; } }
 start.addEventListener("click", () => void send("NAYAN_START"));
 confirm.addEventListener("click", () => void send("NAYAN_CONFIRM"));
+allowSite.addEventListener("click", () => void (async () => { try { const result = await browser.runtime.sendMessage({ type: "NAYAN_ALLOW_CURRENT_SITE" }) as { origin: string }; status.textContent = `Approved ${result.origin}. You can now start Nayan on this site.`; } catch (error) { status.textContent = error instanceof Error ? error.message : "Nayan could not approve this site."; } })());
