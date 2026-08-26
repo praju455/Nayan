@@ -17,7 +17,7 @@ export function createSanitizedOutput(input: { rawFrame: LocalRawFrame; taskId: 
 /** Ensure sensitive rectangles were physically replaced before any optional image serialization. */
 export function verifyRedactions(image: ImageData, redactions: readonly RedactionRecord[]): void {
   for (const redaction of redactions) {
-    if (redaction.method === "tokenize") continue;
+    if (redaction.method === "tokenize" || redaction.method === "blur") continue;
     const [left, top, right, bottom] = redaction.bbox.map(Math.round) as [number, number, number, number];
     const x = Math.max(0, Math.min(image.width - 1, left)); const y = Math.max(0, Math.min(image.height - 1, top));
     const pixel = (y * image.width + x) * 4;
