@@ -6,6 +6,9 @@ export default defineConfig({
     description: "On-device perception and local PII sanitization for browser agents.",
     permissions: ["activeTab", "tabs", "storage", "scripting"],
     host_permissions: ["http://localhost:8000/*"],
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; img-src 'self' data:;"
+    },
     action: { default_title: "Nayan" }
   }
 });
