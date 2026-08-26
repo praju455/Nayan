@@ -31,6 +31,7 @@ export function recognizePii(text: string): PiiMatch[] {
 export function sensitiveCategoryFromDom(node: { inputType?: string; autocomplete?: string; label?: string; }): PiiCategory | undefined {
   const hint = `${node.inputType ?? ""} ${node.autocomplete ?? ""} ${node.label ?? ""}`.toLowerCase();
   if (node.inputType === "password" || /password|current-password|new-password/.test(hint)) return "PASSWORD";
+  if (/employee\s*name|profile\s*name|\bname\b/.test(hint)) return "PERSON_NAME";
   if (/email/.test(hint)) return "EMAIL";
   if (/tel|phone|mobile/.test(hint)) return "PHONE";
   if (/cc-|card/.test(hint)) return "CREDIT_CARD";
@@ -38,5 +39,7 @@ export function sensitiveCategoryFromDom(node: { inputType?: string; autocomplet
   if (/\bpan\b|permanent account/.test(hint)) return "PAN";
   if (/bank|account/.test(hint)) return "BANK_ACCOUNT";
   if (/employee.?id/.test(hint)) return "EMPLOYEE_ID";
+  if (/amount|reimbursement|salary|income/.test(hint)) return "FINANCIAL_AMOUNT";
+  if (/department/.test(hint)) return "DEPARTMENT";
   return undefined;
 }

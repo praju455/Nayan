@@ -66,8 +66,8 @@ class ActionResponse(StrictModel):
     def action_shape_is_safe(self) -> "ActionResponse":
         if self.action in {"click", "type", "select", "focus"} and not self.targetId:
             raise ValueError("targetId is required for target actions")
-        if self.action == "type" and not self.valueToken:
-            raise ValueError("type action requires a placeholder token")
+        if self.action in {"type", "select"} and not self.valueToken:
+            raise ValueError("field-changing actions require a placeholder token")
         if self.action == "navigate" and not self.destination:
             raise ValueError("navigate action requires destination")
         return self

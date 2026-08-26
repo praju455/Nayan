@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Protocol
 
 import httpx
@@ -15,6 +16,27 @@ class SafeRuleReasoningBackend:
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
         task = scene.task.lower()
+        def field_key(label: str | None) -> str:
+            return re.sub(r"\s+", " ", re.sub(r"\bprofile\b", "", (label or "").lower())).strip()
+
+        sources = {
+            field_key(element.label): element
+            for element in scene.elements
+            if (element.label or "").lower().startswith("profile ") and element.text
+        }
+        targets = [
+            element for element in scene.elements
+            if element.interactive and element.role in {"textbox", "combobox"}
+            and not (element.label or "").lower().startswith("profile ")
+        ]
+        token_pattern = re.compile(r"<([A-Z_]+_[A-Za-z0-9_-]+)>")
+        for target in targets:
+            source = sources.get(field_key(target.label))
+            token_match = token_pattern.fullmatch(source.text or "") if source else None
+            if not target.text and token_match:
+                action = "select" if target.role == "combobox" else "type"
+                return ActionResponse(action=action, targetId=target.id, valueToken=token_match.group(1), confidence=0.97, reason=f"Locally tokenized profile value matches the empty {field_key(target.label)} field.")
+
         submit = next((element for element in scene.elements if element.interactive and any(word in " ".join(filter(None, [element.label, element.text])).lower() for word in ("submit", "send", "confirm"))), None)
         if submit and any(word in task for word in ("submit", "complete", "send")):
             if scene.state.confirmed:

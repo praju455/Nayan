@@ -23,3 +23,19 @@ def test_server_rejects_raw_artifact_and_plaintext_pii() -> None:
     raw_email = {**safe_payload, "task": "Send ava@example.com"}
     assert TestClient(app).post("/v1/agent/next-action", json=raw_frame).status_code == 422
     assert TestClient(app).post("/v1/agent/next-action", json=raw_email).status_code == 422
+
+
+def test_planner_fills_an_empty_field_only_with_a_local_token() -> None:
+    payload = {
+        **safe_payload,
+        "elements": [
+            {"id": "profile_email", "role": "textbox", "label": "Profile email", "text": "<EMAIL_1_a1>", "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
+            {"id": "form_email", "role": "textbox", "label": "Email", "text": None, "bbox": [1, 12, 20, 22], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
+            {"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 24, 20, 34], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
+        ],
+    }
+    response = TestClient(app).post("/v1/agent/next-action", json=payload)
+    assert response.status_code == 200
+    assert response.json()["action"] == "type"
+    assert response.json()["targetId"] == "form_email"
+    assert response.json()["valueToken"] == "EMAIL_1_a1"

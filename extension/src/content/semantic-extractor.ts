@@ -15,7 +15,8 @@ function isVisible(element: Element): boolean {
 
 function labelFor(element: HTMLElement): string | undefined {
   const labelled = element.getAttribute("aria-labelledby")?.split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim()).filter(Boolean).join(" ");
-  return element.getAttribute("aria-label")?.trim() || labelled || (element instanceof HTMLInputElement ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`)?.textContent?.trim() : undefined) || element.getAttribute("placeholder")?.trim() || undefined;
+  const wrappingLabel = element.closest("label")?.childNodes[0]?.textContent?.trim();
+  return element.getAttribute("aria-label")?.trim() || labelled || (element instanceof HTMLInputElement ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`)?.textContent?.trim() : undefined) || wrappingLabel || element.getAttribute("placeholder")?.trim() || undefined;
 }
 
 export function extractSemanticTree(): RawSemanticNode[] {

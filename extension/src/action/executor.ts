@@ -9,6 +9,7 @@ export function executeAction(action: AgentAction, resolveToken: (token: string)
     case "click": element!.click(); return { ok: true };
     case "focus": element!.focus(); return { ok: true };
     case "type": { const value = action.valueToken ? resolveToken(action.valueToken) : undefined; if (value === undefined || !(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return { ok: false, reason: "Token or text field unavailable" }; element.focus(); element.value = value; element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value })); element.dispatchEvent(new Event("change", { bubbles: true })); return { ok: true }; }
+    case "select": { const value = action.valueToken ? resolveToken(action.valueToken) : undefined; if (value === undefined || !(element instanceof HTMLSelectElement)) return { ok: false, reason: "Token or select field unavailable" }; element.focus(); element.value = value; element.dispatchEvent(new Event("input", { bubbles: true })); element.dispatchEvent(new Event("change", { bubbles: true })); return { ok: true }; }
     case "scroll": window.scrollBy({ top: action.deltaY ?? 500, behavior: "smooth" }); return { ok: true };
     case "navigate": if (action.destination) { window.location.assign(action.destination); return { ok: true }; } return { ok: false, reason: "Missing destination" };
     case "wait": case "done": case "confirm_needed": return { ok: true };
