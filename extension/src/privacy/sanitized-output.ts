@@ -1,5 +1,5 @@
 import { redactImageLocally } from "./sanitizer";
-import type { LocalRawFrame, RedactionRecord, SanitizedContextPackage, SanitizedElement } from "../shared/types";
+import type { LocalRawFrame, RedactionRecord, SanitizedContextPackage, SanitizedElement, SanitizedTab } from "../shared/types";
 
 export type LocalSanitizedArtifact = Readonly<{ context: SanitizedContextPackage; redactedPixels: ImageData; rawPreview: ImageData }>;
 
@@ -7,10 +7,10 @@ export type LocalSanitizedArtifact = Readonly<{ context: SanitizedContextPackage
  * Creates a brand-new safe artifact from local raw pixels. The raw frame remains in this module's
  * local return value and is never part of `context`, which is the only value eligible for transport.
  */
-export function createSanitizedOutput(input: { rawFrame: LocalRawFrame; taskId: string; task: string; elements: readonly SanitizedElement[]; redactions: readonly RedactionRecord[]; step: number; pageFingerprint: string; confirmed: boolean }): LocalSanitizedArtifact {
+export function createSanitizedOutput(input: { rawFrame: LocalRawFrame; taskId: string; task: string; tabs: readonly SanitizedTab[]; elements: readonly SanitizedElement[]; redactions: readonly RedactionRecord[]; step: number; pageFingerprint: string; confirmed: boolean }): LocalSanitizedArtifact {
   const redactedPixels = redactImageLocally(input.rawFrame.image, input.redactions);
   verifyRedactions(redactedPixels, input.redactions);
-  const context: SanitizedContextPackage = { protocolVersion: "1.0", taskId: input.taskId, screen: { width: input.rawFrame.width, height: input.rawFrame.height }, task: input.task, elements: input.elements, redactions: input.redactions, state: { step: input.step, pageFingerprint: input.pageFingerprint, confirmed: input.confirmed }, redactedScreenshot: null };
+  const context: SanitizedContextPackage = { protocolVersion: "1.0", taskId: input.taskId, screen: { width: input.rawFrame.width, height: input.rawFrame.height }, task: input.task, tabs: input.tabs, elements: input.elements, redactions: input.redactions, state: { step: input.step, pageFingerprint: input.pageFingerprint, confirmed: input.confirmed }, redactedScreenshot: null };
   return { context, redactedPixels, rawPreview: input.rawFrame.image };
 }
 

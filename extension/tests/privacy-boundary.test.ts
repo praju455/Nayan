@@ -6,7 +6,7 @@ import type { SanitizedContextPackage } from "../src/shared/types";
 import { TokenVault } from "../src/token-vault/token-vault";
 
 const safePayload: SanitizedContextPackage = {
-  protocolVersion: "1.0", taskId: "task_demo", screen: { width: 1280, height: 720 }, task: "Enter <EMAIL_1_x7> in the email field.",
+  protocolVersion: "1.0", taskId: "task_demo", screen: { width: 1280, height: 720 }, task: "Enter <EMAIL_1_x7> in the email field.", tabs: [],
   elements: [{ id: "e1", role: "textbox", semanticType: "email", text: "<EMAIL_1_x7>", bbox: [10, 10, 100, 30], visible: true, interactive: true, confidence: 0.99, source: ["dom"] }],
   redactions: [{ type: "EMAIL", token: "EMAIL_1_x7", bbox: [10, 10, 100, 30], method: "tokenize" }], state: { step: 0, pageFingerprint: "fp_aabbccddeeffgghh" }, redactedScreenshot: null
 };

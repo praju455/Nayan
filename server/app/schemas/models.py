@@ -25,6 +25,13 @@ class SanitizedElement(StrictModel):
     source: list[Literal["dom", "aria", "vision", "ocr"]] = Field(min_length=1)
 
 
+class SanitizedTab(StrictModel):
+    id: int = Field(ge=0)
+    origin: str = Field(pattern=r"^https?://")
+    title: str | None = Field(default=None, max_length=300)
+    active: bool
+
+
 class Redaction(StrictModel):
     type: str
     token: str | None = None
@@ -43,18 +50,20 @@ class SanitizedContext(StrictModel):
     taskId: str = Field(pattern=r"^task_[A-Za-z0-9_-]+$")
     screen: Screen
     task: str = Field(max_length=4000)
+    tabs: list[SanitizedTab] = Field(default_factory=list, max_length=100)
     elements: list[SanitizedElement] = Field(max_length=500)
     redactions: list[Redaction]
     state: AgentState
     redactedScreenshot: str | None = Field(default=None, max_length=4_000_000)
 
 
-ActionName = Literal["click", "type", "scroll", "select", "click_visible_text", "focus", "navigate", "wait", "done", "confirm_needed"]
+ActionName = Literal["click", "type", "scroll", "select", "click_visible_text", "activate_tab", "focus", "navigate", "wait", "done", "confirm_needed"]
 
 
 class ActionResponse(StrictModel):
     action: ActionName
     targetId: str | None = Field(default=None, max_length=128)
+    tabId: int | None = Field(default=None, ge=0)
     valueToken: str | None = Field(default=None, pattern=r"^[A-Z_]+_[A-Za-z0-9_-]+$")
     destination: HttpUrl | None = None
     deltaY: float | None = Field(default=None, ge=-5000, le=5000)
@@ -70,4 +79,6 @@ class ActionResponse(StrictModel):
             raise ValueError("field-changing actions require a placeholder token")
         if self.action == "navigate" and not self.destination:
             raise ValueError("navigate action requires destination")
+        if self.action == "activate_tab" and self.tabId is None:
+            raise ValueError("activate_tab action requires tabId")
         return self
