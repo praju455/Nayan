@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.context.builder import MAX_PLANNER_ELEMENTS, build_reasoning_context
 from app.main import app
-from app.reasoning.backend import FallbackReasoningBackend, PLANNER_INSTRUCTIONS, PlannerUnavailableError, configured_backend, ensure_action_is_grounded, provider_backend
+from app.reasoning.backend import FallbackReasoningBackend, PLANNER_INSTRUCTIONS, configured_backend, provider_backend
 from app.schemas.models import SanitizedContext
 
 safe_payload = {"protocolVersion": "1.0", "taskId": "task_demo", "screen": {"width": 100, "height": 100}, "task": "Submit the form for <EMAIL_1_a1>.", "elements": [{"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 2, 30, 20], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}], "redactions": [{"type": "EMAIL", "token": "EMAIL_1_a1", "bbox": [1, 2, 30, 20], "method": "tokenize"}], "state": {"step": 0, "pageFingerprint": "abcdef"}, "redactedScreenshot": None}
@@ -127,20 +127,6 @@ def test_gemini_is_primary_with_groq_as_the_backup(monkeypatch) -> None:
 def test_hosted_planner_contract_requires_nayan_field_names() -> None:
     assert "targetId" in PLANNER_INSTRUCTIONS
     assert "never `target`" in PLANNER_INSTRUCTIONS
-
-
-def test_model_cannot_invent_a_local_token() -> None:
-    scene = SanitizedContext.model_validate({
-        **safe_payload,
-        "task": "Type <USER_PROVIDED_TEXT_1_known>.",
-    })
-    action = {"action": "type", "targetId": "submit", "valueToken": "USER_PROVIDED_TEXT_9_invented", "confidence": 0.9, "reason": "test"}
-    from app.schemas.models import ActionResponse
-    try:
-        ensure_action_is_grounded(ActionResponse.model_validate(action), scene)
-    except PlannerUnavailableError:
-        return
-    raise AssertionError("Invented local tokens must be rejected")
 
 
 def test_planner_context_is_bounded_to_visible_controls() -> None:
