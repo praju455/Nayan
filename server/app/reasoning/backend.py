@@ -195,6 +195,7 @@ class CompatibleChatBackend:
         self.model = model
         self.url = f"{base_url.rstrip('/')}/chat/completions"
         self.hide_reasoning = hide_reasoning
+        self.timeout_seconds = float(os.getenv("NAYAN_PLANNER_TIMEOUT_SECONDS", "12"))
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
         body = {
@@ -210,7 +211,7 @@ class CompatibleChatBackend:
             body["reasoning_format"] = "hidden"
         headers = {"authorization": f"Bearer {self.api_key}", "content-type": "application/json"}
         try:
-            async with httpx.AsyncClient(timeout=25) as client:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 response = await client.post(self.url, json=body, headers=headers)
                 response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
