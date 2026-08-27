@@ -1,6 +1,6 @@
 import type { AgentAction, SanitizedElement } from "../shared/types";
 
-const allowed = new Set<AgentAction["action"]>(["click", "type", "scroll", "select", "click_visible_text", "activate_tab", "focus", "navigate", "wait", "done", "confirm_needed"]);
+const allowed = new Set<AgentAction["action"]>(["click", "type", "scroll", "select", "click_visible_text", "focus", "navigate", "wait", "done", "confirm_needed"]);
 const targetActions = new Set(["click", "type", "select", "focus"]);
 
 export function validateLocalAction(action: AgentAction, elements: readonly SanitizedElement[], tokenExists: (token: string) => boolean): string | undefined {

@@ -7,7 +7,7 @@ import { fuseSemanticAndVisual } from "../scene-fusion/fuse";
 import { TokenVault } from "../token-vault/token-vault";
 import { assertSafePayload } from "../payload-guard/guard";
 import { requestNextAction } from "../transport/client";
-import type { AgentAction, RawSemanticNode, SanitizedContextPackage, SanitizedTab } from "../shared/types";
+import type { AgentAction, RawSemanticNode, SanitizedContextPackage } from "../shared/types";
 import { browser } from "wxt/browser";
 import { validateLocalAction } from "../action/validator";
 import type { OcrText } from "../ocr/selective-ocr";
@@ -67,7 +67,6 @@ export class NayanAgent {
   private async runStep(confirmed: boolean): Promise<AgentRunResult> {
     if (!this.active) throw new Error("No active Nayan task");
     const { tabId, task, serverUrl } = this.active;
-    const tabs = await this.safeTabs();
     // This call creates a local-only raw frame. It is intentionally not passed to transport.
     const rawFrame = await captureLocalFrame();
     const { nodes: domNodes, viewport } = await this.sendToContent<{ nodes: RawSemanticNode[]; viewport: Viewport }>(tabId, { type: "NAYAN_EXTRACT_SEMANTICS" });
@@ -79,7 +78,7 @@ export class NayanAgent {
     const faceRedactions = asFaceRedactions(await this.faceDetector.detect(rawFrame.image));
     const elements = fuseSemanticAndVisual(nodes, sanitized.elements, vision);
     const redactions = [...sanitized.redactions, ...faceRedactions];
-    const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task, tabs, elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
+    const artifact = createSanitizedOutput({ rawFrame, taskId: `task_${crypto.randomUUID()}`, task, elements, redactions, step: this.step++, pageFingerprint: await this.fingerprint(nodes), confirmed });
     // The popup gets a local redacted preview; the server gets context only.
     const preview = await localPreviewDataUrl(artifact.redactedPixels);
     // `artifact.context` is a separate sanitized object. Raw pixels are not reachable by transport.
@@ -89,16 +88,6 @@ export class NayanAgent {
       return { status: "confirmation_required", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: action.message };
     }
     if (action.action === "done") { this.vault.clear(); await this.clearActiveTask(); return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview }; }
-    if (action.action === "activate_tab") {
-      if (!action.tabId || !tabs.some((tab) => tab.id === action.tabId)) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Planner selected an unknown browser tab." };
-      const targetTab = await browser.tabs.get(action.tabId);
-      if (!targetTab.url || !(await isSiteAllowed(targetTab.url))) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Approve that tab's site before Nayan can switch to it." };
-      await browser.tabs.update(action.tabId, { active: true });
-      this.active = { ...this.active, tabId: action.tabId };
-      await browser.storage.session.set({ [activeTaskKey]: this.active });
-      await new Promise<void>((resolve) => setTimeout(resolve, 300));
-      return this.runStep(false);
-    }
     if (action.action === "navigate" && action.destination && !(await isSiteAllowed(action.destination))) {
       return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "The destination site is not approved. Approve it before Nayan can navigate there." };
     }
@@ -140,17 +129,6 @@ export class NayanAgent {
     return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Stopped after the maximum safe step count." };
   }
   private async analyzeLocally(image: ImageData, nodes: readonly RawSemanticNode[]) { await this.perception.load(); return this.perception.analyze(image, nodes.filter((node) => node.visible).map(({ id, bbox }) => ({ id, bbox }))); }
-  private async safeTabs(): Promise<SanitizedTab[]> {
-    const tabs = await browser.tabs.query({ currentWindow: true });
-    return tabs.flatMap((tab) => {
-      if (!Number.isInteger(tab.id) || !tab.url) return [];
-      try {
-        const url = new URL(tab.url);
-        if (!/^https?:$/.test(url.protocol)) return [];
-        return [{ id: tab.id!, origin: url.origin, title: tab.title ? sanitizeTask(tab.title, this.vault) : undefined, active: tab.active === true }];
-      } catch { return []; }
-    });
-  }
   private async fingerprint(nodes: readonly RawSemanticNode[]): Promise<string> {
     const data = new TextEncoder().encode(nodes.map(({ id, role, bbox }) => `${id}:${role}:${bbox.join(",")}`).join("|"));
     const digest = await crypto.subtle.digest("SHA-256", data);
