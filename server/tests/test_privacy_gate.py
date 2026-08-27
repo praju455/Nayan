@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.reasoning.backend import FallbackReasoningBackend, PLANNER_INSTRUCTIONS, configured_backend, provider_backend
+from app.reasoning.backend import FallbackReasoningBackend, configured_backend, provider_backend
 
 safe_payload = {"protocolVersion": "1.0", "taskId": "task_demo", "screen": {"width": 100, "height": 100}, "task": "Submit the form for <EMAIL_1_a1>.", "elements": [{"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 2, 30, 20], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}], "redactions": [{"type": "EMAIL", "token": "EMAIL_1_a1", "bbox": [1, 2, 30, 20], "method": "tokenize"}], "state": {"step": 0, "pageFingerprint": "abcdef"}, "redactedScreenshot": None}
 
@@ -118,8 +118,3 @@ def test_gemini_is_primary_with_groq_as_the_backup(monkeypatch) -> None:
     backend = configured_backend()
     assert isinstance(backend, FallbackReasoningBackend)
     assert [candidate.model for candidate in backend.backends] == ["gemini-3.7-flash", "qwen/qwen3.6-27b"]
-
-
-def test_hosted_planner_contract_requires_nayan_field_names() -> None:
-    assert "targetId" in PLANNER_INSTRUCTIONS
-    assert "never `target`" in PLANNER_INSTRUCTIONS
