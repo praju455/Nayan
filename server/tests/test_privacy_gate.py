@@ -1,9 +1,11 @@
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from app.context.builder import MAX_PLANNER_ELEMENTS, build_reasoning_context
 from app.main import app
 from app.reasoning.backend import FallbackReasoningBackend, PLANNER_INSTRUCTIONS, PlannerUnavailableError, configured_backend, ensure_action_is_grounded, provider_backend
-from app.schemas.models import SanitizedContext
+from app.schemas.models import ActionResponse, SanitizedContext
 
 safe_payload = {"protocolVersion": "1.0", "taskId": "task_demo", "screen": {"width": 100, "height": 100}, "task": "Submit the form for <EMAIL_1_a1>.", "elements": [{"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 2, 30, 20], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}], "redactions": [{"type": "EMAIL", "token": "EMAIL_1_a1", "bbox": [1, 2, 30, 20], "method": "tokenize"}], "state": {"step": 0, "pageFingerprint": "abcdef"}, "redactedScreenshot": None}
 
@@ -135,12 +137,27 @@ def test_model_cannot_invent_a_local_token() -> None:
         "task": "Type <USER_PROVIDED_TEXT_1_known>.",
     })
     action = {"action": "type", "targetId": "submit", "valueToken": "USER_PROVIDED_TEXT_9_invented", "confidence": 0.9, "reason": "test"}
-    from app.schemas.models import ActionResponse
     try:
         ensure_action_is_grounded(ActionResponse.model_validate(action), scene)
     except PlannerUnavailableError:
         return
     raise AssertionError("Invented local tokens must be rejected")
+
+
+def test_premature_hosted_done_recovers_to_the_local_draft_step() -> None:
+    class DoneBackend:
+        async def next_action(self, scene, reasoning_context):
+            return ActionResponse.model_validate({"action": "done", "confidence": 0.9, "reason": "incorrect early stop"})
+
+    scene = SanitizedContext.model_validate({
+        **safe_payload,
+        "task": "Type <USER_PROVIDED_TEXT_1_known>.",
+        "elements": [{"id": "composer", "role": "textbox", "semanticType": "contenteditable", "label": "Message", "text": None, "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["aria"]}],
+    })
+    action = asyncio.run(FallbackReasoningBackend([DoneBackend()]).next_action(scene, "safe context"))
+    assert action.action == "type"
+    assert action.targetId == "composer"
+    assert action.valueToken == "USER_PROVIDED_TEXT_1_known"
 
 
 def test_planner_context_is_bounded_to_visible_controls() -> None:
