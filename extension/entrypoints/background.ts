@@ -24,12 +24,10 @@ export default defineBackground(() => {
       if (!message.task) throw new Error("Provide a task first.");
       const tabs = await browser.tabs.query({ currentWindow: true });
       const activeTab = tabs.find((tab) => tab.active);
-      // A Chrome internal page is a deliberate launchpad: keep that tab and
-      // let Nayan open the requested site after a navigation confirmation.
-      // This avoids unexpectedly taking over an already-open matching tab.
-      const tab = activeTab && !isRegularSite(activeTab.url)
-        ? activeTab
-        : selectMatchingTaskTab(tabs, message.task) ?? activeTab ?? selectTaskTab(tabs, message.task);
+      // From Chrome's New Tab page, reuse a specifically named open tab when
+      // there is one; otherwise keep New Tab as the launch point so the agent
+      // can plan a first navigation without trying to inspect chrome://.
+      const tab = selectMatchingTaskTab(tabs, message.task) ?? activeTab ?? selectTaskTab(tabs, message.task);
       if (!tab?.id) throw new Error("Open a browser tab first.");
       if (isRegularSite(tab.url) && !(await isSiteAllowed(tab.url))) throw new Error("This site is not approved. Select ‘Allow task site’ before starting Nayan.");
       await browser.tabs.update(tab.id, { active: true });
