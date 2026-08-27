@@ -215,13 +215,7 @@ class CompatibleChatBackend:
                 response = await client.post(self.url, json=body, headers=headers)
                 response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
-            action = json.loads(content)
-            # Some compatible models use the common `target` alias despite the
-            # contract. It becomes usable only after strict schema and target
-            # validation, so this recovery cannot broaden what Nayan executes.
-            if isinstance(action, dict) and "target" in action and "targetId" not in action:
-                action["targetId"] = action.pop("target")
-            return ActionResponse.model_validate(action)
+            return ActionResponse.model_validate(json.loads(content))
         except (httpx.HTTPError, KeyError, IndexError, TypeError, json.JSONDecodeError, ValueError) as error:
             raise PlannerUnavailableError("Compatible hosted planner could not return a safe action") from error
 

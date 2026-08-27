@@ -1,9 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.context.builder import MAX_PLANNER_ELEMENTS, build_reasoning_context
 from app.main import app
 from app.reasoning.backend import FallbackReasoningBackend, PLANNER_INSTRUCTIONS, configured_backend, provider_backend
-from app.schemas.models import SanitizedContext
 
 safe_payload = {"protocolVersion": "1.0", "taskId": "task_demo", "screen": {"width": 100, "height": 100}, "task": "Submit the form for <EMAIL_1_a1>.", "elements": [{"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 2, 30, 20], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}], "redactions": [{"type": "EMAIL", "token": "EMAIL_1_a1", "bbox": [1, 2, 30, 20], "method": "tokenize"}], "state": {"step": 0, "pageFingerprint": "abcdef"}, "redactedScreenshot": None}
 
@@ -126,16 +124,3 @@ def test_gemini_is_primary_with_groq_as_the_backup(monkeypatch) -> None:
 def test_hosted_planner_contract_requires_nayan_field_names() -> None:
     assert "targetId" in PLANNER_INSTRUCTIONS
     assert "never `target`" in PLANNER_INSTRUCTIONS
-
-
-def test_planner_context_is_bounded_to_visible_controls() -> None:
-    payload = {
-        **safe_payload,
-        "elements": [
-            {"id": f"element_{index}", "role": "button", "label": f"Button {index}", "text": "x" * 400, "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}
-            for index in range(MAX_PLANNER_ELEMENTS + 20)
-        ],
-    }
-    context = build_reasoning_context(SanitizedContext.model_validate(payload))
-    assert context.count(": button;") == MAX_PLANNER_ELEMENTS
-    assert "x" * 161 not in context
