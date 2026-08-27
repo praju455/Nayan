@@ -25,9 +25,9 @@ export class NayanAgent {
   private active?: ActiveTask;
   private readonly perception = new OnnxPerceptionBackend((browser.runtime as unknown as { getURL(path: string): string }).getURL("models/mobilenetv3_small.onnx"));
   private readonly faceDetector = new OnnxFaceDetector();
-  async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false, draftText?: string): Promise<AgentRunResult> {
+  async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false): Promise<AgentRunResult> {
     // Only the already-sanitized task survives a service-worker suspension.
-    this.active = { tabId, task: sanitizeTask(task, this.vault, draftText), serverUrl, autoSubmitDemo };
+    this.active = { tabId, task: sanitizeTask(task, this.vault), serverUrl, autoSubmitDemo };
     await browser.storage.session.set({ [activeTaskKey]: this.active });
     this.step = 0;
     return this.runStep(false);

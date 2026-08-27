@@ -39,19 +39,3 @@ def test_planner_fills_an_empty_field_only_with_a_local_token() -> None:
     assert response.json()["action"] == "type"
     assert response.json()["targetId"] == "form_email"
     assert response.json()["valueToken"] == "EMAIL_1_a1"
-
-
-def test_planner_drafts_locally_tokenized_message_without_send_action() -> None:
-    payload = {
-        **safe_payload,
-        "task": "Draft the private message in the visible chat composer. Private draft text: <USER_PROVIDED_TEXT_1_a1>.",
-        "elements": [
-            {"id": "composer", "role": "textbox", "semanticType": "contenteditable", "label": "Message", "text": None, "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["aria"]},
-            {"id": "send", "role": "button", "label": "Send", "text": "Send", "bbox": [1, 12, 20, 22], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
-        ],
-    }
-    response = TestClient(app).post("/v1/agent/next-action", json=payload)
-    assert response.status_code == 200
-    assert response.json()["action"] == "type"
-    assert response.json()["targetId"] == "composer"
-    assert response.json()["valueToken"] == "USER_PROVIDED_TEXT_1_a1"

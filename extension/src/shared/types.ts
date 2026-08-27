@@ -1,5 +1,5 @@
 export type BoundingBox = readonly [number, number, number, number];
-export type PiiCategory = "EMAIL" | "PHONE" | "CREDIT_CARD" | "PAN" | "AADHAAR" | "IP_ADDRESS" | "DATE_OF_BIRTH" | "BANK_ACCOUNT" | "PASSWORD" | "EMPLOYEE_ID" | "PERSON_NAME" | "FINANCIAL_AMOUNT" | "DEPARTMENT" | "ADDRESS" | "FACE" | "USER_PROVIDED_TEXT";
+export type PiiCategory = "EMAIL" | "PHONE" | "CREDIT_CARD" | "PAN" | "AADHAAR" | "IP_ADDRESS" | "DATE_OF_BIRTH" | "BANK_ACCOUNT" | "PASSWORD" | "EMPLOYEE_ID" | "PERSON_NAME" | "FINANCIAL_AMOUNT" | "DEPARTMENT" | "ADDRESS" | "FACE";
 
 declare const localRawFrameBrand: unique symbol;
 /** Local-only. This type must never be imported by transport modules. */

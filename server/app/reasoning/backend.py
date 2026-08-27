@@ -16,27 +16,6 @@ class SafeRuleReasoningBackend:
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
         task = scene.task.lower()
-
-        # General, locally-tokenized message drafting. This intentionally has
-        # no send/click branch: drafting is reversible, while sending remains
-        # an explicit high-impact action that must be confirmed separately.
-        draft_token = re.search(r"<(USER_PROVIDED_TEXT_[A-Za-z0-9_-]+)>", scene.task)
-        if draft_token and any(word in task for word in ("draft", "message", "type", "write")):
-            textboxes = [
-                element for element in scene.elements
-                if element.interactive and element.role == "textbox" and not element.text
-            ]
-            composer = next((element for element in textboxes if element.semanticType == "contenteditable"), None)
-            composer = composer or next((element for element in textboxes if any(word in (element.label or "").lower() for word in ("message", "reply", "chat", "compose", "write"))), None)
-            if composer:
-                return ActionResponse(
-                    action="type",
-                    targetId=composer.id,
-                    valueToken=draft_token.group(1),
-                    confidence=0.94,
-                    reason="A visible message composer was found. Nayan will draft the locally tokenized text only; it will not send it.",
-                )
-
         def field_key(label: str | None) -> str:
             return re.sub(r"\s+", " ", re.sub(r"\bprofile\b", "", (label or "").lower())).strip()
 
