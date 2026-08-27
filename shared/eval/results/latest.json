@@ -1,22 +1,28 @@
 {
-  "generatedAt": "2026-08-27T17:37:02.435Z",
+  "generatedAt": "2026-08-27T17:52:36.394Z",
   "source": "synthetic labelled fixtures",
   "metrics": {
     "visualContextAccuracy": 1,
     "piiPrecision": 1,
     "piiRecall": 1,
     "piiF1": 1,
+    "redactionPrecision": 1,
+    "redactionRecall": 1,
     "redactionVerificationPassRate": 1,
     "localCoreRuntimeBytes": 27370160,
     "localNerRuntimeBytes": 42360013,
     "localRuntimeBytes": 69730173,
-    "medianPiiFixtureScanMs": 0.0014579999999995152
+    "medianPiiFixtureScanMs": 0.0010830000000012774
   },
   "counts": {
-    "piiTruePositives": 6,
+    "piiTruePositives": 10,
     "piiFalsePositives": 0,
     "piiFalseNegatives": 0,
+    "redactionTruePositives": 6,
+    "redactionFalsePositives": 0,
+    "redactionFalseNegatives": 0,
     "visualFixtures": 4,
-    "piiFixtureSamples": 700
+    "redactionFixtures": 3,
+    "piiFixtureSamples": 1000
   }
 }

@@ -5,5 +5,8 @@
   { "id": "pan", "text": "PAN ABCDE1234F", "expected": ["PAN"] },
   { "id": "aadhar", "text": "Aadhaar 2345 6789 0124", "expected": ["AADHAAR"] },
   { "id": "bank", "text": "Account 123456789012", "expected": ["BANK_ACCOUNT"] },
+  { "id": "ip-address", "text": "Audit source 198.51.100.42", "expected": ["IP_ADDRESS"] },
+  { "id": "date-of-birth", "text": "DOB 07/03/1999", "expected": ["DATE_OF_BIRTH"] },
+  { "id": "two-identifiers", "text": "Reach neha@example.in or call 9876543210", "expected": ["EMAIL", "PHONE"] },
   { "id": "negative-card", "text": "Reference 1234 5678 9012 3456", "expected": [] }
 ]

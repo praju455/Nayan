@@ -1,6 +1,7 @@
 import type * as ort from "onnxruntime-web";
 import { browser } from "wxt/browser";
 import type { BoundingBox, VisualElement } from "../shared/types";
+import { proposeVisualRegions } from "./region-proposer";
 
 export interface PerceptionBackend { load(): Promise<void>; analyze(image: ImageData, regions?: readonly { id: string; bbox: BoundingBox }[]): Promise<VisualElement[]>; dispose(): Promise<void>; readonly runtime: "webgpu" | "wasm" | "semantic"; }
 
@@ -31,8 +32,11 @@ export class OnnxPerceptionBackend implements PerceptionBackend {
   async analyze(image: ImageData, regions: readonly { id: string; bbox: BoundingBox }[] = []): Promise<VisualElement[]> {
     if (!this.session || !this.ortRuntime) return [];
     const output: VisualElement[] = [];
-    // Classify a bounded set of DOM-grounded local crops. Canvas/image-only boxes can be supplied by a detector later.
-    for (const region of regions.slice(0, 24)) {
+    const proposed = proposeVisualRegions(image).map((proposal, index) => ({ id: `vision_${index + 1}`, bbox: proposal.bbox }));
+    const uniqueRegions = [...regions, ...proposed.filter((proposal) => !regions.some((region) => overlap(region.bbox, proposal.bbox) > 0.7))];
+    // The classifier sees both semantic crops and pixel-only proposals. A
+    // visual-only result is deliberately non-interactive after fusion.
+    for (const region of uniqueRegions.slice(0, 36)) {
       const bitmap = await createImageBitmap(this.toModelImage(image, region.bbox));
       const tensor = await this.ortRuntime.Tensor.fromImage(bitmap, { tensorFormat: "RGB", tensorLayout: "NCHW", norm: { mean: [255 * 0.229, 255 * 0.224, 255 * 0.225], bias: [-255 * 0.485, -255 * 0.456, -255 * 0.406] } });
       bitmap.close();
@@ -51,4 +55,10 @@ export class OnnxPerceptionBackend implements PerceptionBackend {
     const output = new OffscreenCanvas(224, 224); const context = output.getContext("2d"); if (!context) throw new Error("Local visual canvas unavailable"); context.fillStyle = "rgb(128,128,128)"; context.fillRect(0, 0, 224, 224); const scale = Math.min(224 / width, 224 / height); const targetWidth = width * scale; const targetHeight = height * scale; context.drawImage(source, Math.max(0, left), Math.max(0, top), width, height, (224 - targetWidth) / 2, (224 - targetHeight) / 2, targetWidth, targetHeight); return context.getImageData(0, 0, 224, 224);
   }
   async dispose(): Promise<void> { await this.session?.release(); this.session = undefined; this.ortRuntime = undefined; }
+}
+
+function overlap(a: BoundingBox, b: BoundingBox): number {
+  const left = Math.max(a[0], b[0]); const top = Math.max(a[1], b[1]); const right = Math.min(a[2], b[2]); const bottom = Math.min(a[3], b[3]);
+  const intersection = Math.max(0, right - left) * Math.max(0, bottom - top); const union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - intersection;
+  return union ? intersection / union : 0;
 }
