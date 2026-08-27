@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.reasoning.backend import provider_backend, response_output_text
+from app.reasoning.backend import response_output_text
 
 safe_payload = {"protocolVersion": "1.0", "taskId": "task_demo", "screen": {"width": 100, "height": 100}, "task": "Submit the form for <EMAIL_1_a1>.", "elements": [{"id": "submit", "role": "button", "label": "Submit reimbursement", "text": "Submit reimbursement", "bbox": [1, 2, 30, 20], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]}], "redactions": [{"type": "EMAIL", "token": "EMAIL_1_a1", "bbox": [1, 2, 30, 20], "method": "tokenize"}], "state": {"step": 0, "pageFingerprint": "abcdef"}, "redactedScreenshot": None}
 
@@ -110,7 +110,3 @@ def test_planner_searches_then_selects_a_private_recipient_locally() -> None:
 def test_openai_response_text_parser_reads_structured_output_without_logging_context() -> None:
     payload = {"output": [{"content": [{"type": "output_text", "text": '{"action":"done"}'}]}]}
     assert response_output_text(payload) == '{"action":"done"}'
-
-
-def test_unknown_hosted_provider_is_not_constructed() -> None:
-    assert provider_backend("not-a-provider") is None

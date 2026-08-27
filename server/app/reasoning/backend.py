@@ -224,74 +224,12 @@ class OpenAIResponsesBackend:
             raise PlannerUnavailableError("Hosted planner could not return a safe action") from error
 
 
-class OpenAICompatibleChatBackend:
-    """Gemini/Groq-compatible chat-completions adapter with server validation."""
-
-    def __init__(self, api_key: str, model: str, base_url: str) -> None:
-        self.api_key = api_key
-        self.model = model
-        self.url = f"{base_url.rstrip('/')}/chat/completions"
-
-    async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
-        body = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": PLANNER_INSTRUCTIONS},
-                {"role": "user", "content": reasoning_context},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1,
-        }
-        headers = {"authorization": f"Bearer {self.api_key}", "content-type": "application/json"}
-        try:
-            async with httpx.AsyncClient(timeout=25) as client:
-                response = await client.post(self.url, json=body, headers=headers)
-                response.raise_for_status()
-            content = response.json()["choices"][0]["message"]["content"]
-            return ActionResponse.model_validate(json.loads(content))
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, json.JSONDecodeError, ValueError) as error:
-            raise PlannerUnavailableError("Compatible hosted planner could not return a safe action") from error
-
-
-class FallbackReasoningBackend:
-    def __init__(self, backends: list[ReasoningBackend]) -> None:
-        self.backends = backends
-
-    async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
-        last_error: Exception | None = None
-        for backend in self.backends:
-            try:
-                return await backend.next_action(scene, reasoning_context)
-            except (PlannerUnavailableError, RuntimeError) as error:
-                last_error = error
-        raise PlannerUnavailableError("No configured hosted planner is currently available") from last_error
-
-
-def provider_backend(name: str) -> ReasoningBackend | None:
-    if name == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        return OpenAIResponsesBackend(api_key, os.getenv("NAYAN_OPENAI_MODEL", "gpt-5"), os.getenv("NAYAN_OPENAI_BASE_URL", "https://api.openai.com/v1")) if api_key else None
-    if name == "gemini":
-        api_key = os.getenv("GEMINI_API_KEY")
-        return OpenAICompatibleChatBackend(api_key, os.getenv("NAYAN_GEMINI_MODEL", "gemini-3.7-flash"), os.getenv("NAYAN_GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")) if api_key else None
-    if name == "groq":
-        api_key = os.getenv("GROQ_API_KEY")
-        return OpenAICompatibleChatBackend(api_key, os.getenv("NAYAN_GROQ_MODEL", "openai/gpt-oss-20b"), os.getenv("NAYAN_GROQ_BASE_URL", "https://api.groq.com/openai/v1")) if api_key else None
-    return None
-
-
 def configured_backend() -> ReasoningBackend:
-    priority = [name.strip().lower() for name in os.getenv("NAYAN_REASONING_BACKENDS", "").split(",") if name.strip()]
-    if priority:
-        backends = [backend for name in priority if (backend := provider_backend(name))]
-        if not backends:
-            raise RuntimeError("No API key was found for any configured hosted planner")
-        return FallbackReasoningBackend(backends)
     if os.getenv("NAYAN_REASONING_BACKEND") == "openai":
-        backend = provider_backend("openai")
-        if not backend:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
             raise RuntimeError("OPENAI_API_KEY is required for the OpenAI planner")
-        return backend
+        return OpenAIResponsesBackend(api_key, os.getenv("NAYAN_OPENAI_MODEL", "gpt-5"), os.getenv("NAYAN_OPENAI_BASE_URL", "https://api.openai.com/v1"))
     if os.getenv("NAYAN_REASONING_BACKEND") == "hosted":
         endpoint = os.environ.get("NAYAN_REASONING_URL")
         if not endpoint:
