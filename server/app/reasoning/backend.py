@@ -255,9 +255,7 @@ def configured_backend() -> ReasoningBackend:
     priority = [name.strip().lower() for name in (configured_priority or "gemini,groq").split(",") if name.strip()]
     backends = [backend for name in priority if (backend := provider_backend(name))]
     if backends:
-        # If every hosted provider is temporarily unavailable, retain a
-        # deterministic local-only recovery path instead of returning 503.
-        return FallbackReasoningBackend([*backends, SafeRuleReasoningBackend()])
+        return FallbackReasoningBackend(backends)
     if configured_priority:
         if not backends:
             raise RuntimeError("No API key was found for the configured Gemini/Groq planners")

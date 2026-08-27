@@ -26,24 +26,16 @@ function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory): {
  * by a task-scoped token, even when it does not look like conventional PII.
  */
 export function sanitizeTask(task: string, vault: TokenVault, draftText?: string, recipient?: string): string {
-  let instruction = replacePii(task, vault).value;
+  const instruction = replacePii(task, vault).value;
   const privateDraft = draftText?.trim();
   const privateRecipient = recipient?.trim();
   const details: string[] = [];
-  const recipientMatch = !privateRecipient ? /(\b(?:chat|conversation)\s+(?:named|with)\s+)([A-Za-z0-9_.-]{2,64})\b/i.exec(instruction) : undefined;
-  const inferredRecipient = recipientMatch?.[2];
-  const recipientValue = privateRecipient || inferredRecipient;
-  if (recipientValue) {
-    const token = vault.tokenize("USER_SELECTED_RECIPIENT", recipientValue);
-    if (recipientMatch) instruction = instruction.replace(recipientMatch[0], `${recipientMatch[1]}<${token}>`);
+  if (privateRecipient) {
+    const token = vault.tokenize("USER_SELECTED_RECIPIENT", privateRecipient);
     details.push(`Private chat recipient: <${token}>. Open only the exact visible matching conversation.`);
   }
-  const draftMatch = !privateDraft ? /\b(type|write|reply(?:\s+with)?|message(?:\s+with)?|send)\s+["“']([^"“”']{1,500})["”']/i.exec(instruction) : undefined;
-  const inferredDraft = draftMatch?.[2]?.trim();
-  const draftValue = privateDraft || inferredDraft;
-  if (draftValue) {
-    const token = vault.tokenize("USER_PROVIDED_TEXT", draftValue);
-    if (draftMatch) instruction = instruction.replace(draftMatch[0], `${draftMatch[1]} <${token}>`);
+  if (privateDraft) {
+    const token = vault.tokenize("USER_PROVIDED_TEXT", privateDraft);
     details.push(`Private draft text: <${token}>. Type it only into a visible message composer or text field. Never send, submit, or click a send control.`);
   }
   return details.length ? `${instruction}\n${details.join("\n")}` : instruction;

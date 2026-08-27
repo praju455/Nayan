@@ -119,9 +119,8 @@ def test_gemini_is_primary_with_groq_as_the_backup(monkeypatch) -> None:
     monkeypatch.setenv("GROQ_API_KEY", "test-groq-key")
     backend = configured_backend()
     assert isinstance(backend, FallbackReasoningBackend)
-    assert [candidate.model for candidate in backend.backends[:2]] == ["gemini-3.7-flash", "qwen/qwen3.6-27b"]
+    assert [candidate.model for candidate in backend.backends] == ["gemini-3.7-flash", "qwen/qwen3.6-27b"]
     assert backend.backends[0].timeout_seconds == 12
-    assert backend.backends[-1].__class__.__name__ == "SafeRuleReasoningBackend"
 
 
 def test_hosted_planner_contract_requires_nayan_field_names() -> None:
