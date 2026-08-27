@@ -234,10 +234,28 @@ class FallbackReasoningBackend:
         last_error: Exception | None = None
         for backend in self.backends:
             try:
-                return await backend.next_action(scene, reasoning_context)
+                action = await backend.next_action(scene, reasoning_context)
+                ensure_action_is_grounded(action, scene)
+                return action
             except (PlannerUnavailableError, RuntimeError) as error:
                 last_error = error
         raise PlannerUnavailableError("No configured hosted planner is currently available") from last_error
+
+
+def ensure_action_is_grounded(action: ActionResponse, scene: SanitizedContext) -> None:
+    """Reject model-invented references so another planner can safely recover."""
+    element_by_id = {element.id: element for element in scene.elements}
+    if action.targetId:
+        target = element_by_id.get(action.targetId)
+        if not target or not target.visible or not target.interactive:
+            raise PlannerUnavailableError("Planner returned an unavailable target")
+    if action.action == "activate_tab" and action.tabId not in {tab.id for tab in scene.tabs}:
+        raise PlannerUnavailableError("Planner returned an unavailable tab")
+    available_tokens = set(re.findall(r"<([A-Z_]+_[A-Za-z0-9_-]+)>", scene.task))
+    for element in scene.elements:
+        available_tokens.update(re.findall(r"<([A-Z_]+_[A-Za-z0-9_-]+)>", " ".join(filter(None, [element.label, element.text]))))
+    if action.valueToken and action.valueToken not in available_tokens:
+        raise PlannerUnavailableError("Planner returned an unavailable local token")
 
 
 def provider_backend(name: str) -> ReasoningBackend | None:
