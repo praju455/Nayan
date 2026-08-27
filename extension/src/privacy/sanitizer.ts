@@ -1,28 +1,30 @@
 import { recognizePii, sensitiveCategoryFromDom } from "../pii/recognizer";
 import { TokenVault } from "../token-vault/token-vault";
-import type { PiiCategory, RawSemanticNode, RedactionRecord, SanitizedElement } from "../shared/types";
+import type { PiiCategory, PiiMatch, RawSemanticNode, RedactionRecord, SanitizedElement } from "../shared/types";
 
 const methodFor = (category: PiiCategory): RedactionRecord["method"] => category === "FACE" ? "blur" : category === "PASSWORD" ? "black" : "tokenize";
 const emptyBox: readonly [number, number, number, number] = [0, 0, 0, 0];
 
 export type SanitizationResult = Readonly<{ elements: SanitizedElement[]; redactions: RedactionRecord[] }>;
 
-function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory): { value: string; records: { category: PiiCategory; token: string | null }[] } {
+function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory, localEntities: readonly PiiMatch[] = []): { value: string; records: { category: PiiCategory; token: string | null }[] } {
   // DOM semantics are stronger than a generic numeric recognizer for form values.
-  const matches = fallback && value ? [{ category: fallback, value, start: 0, end: value.length, confidence: 1 }] : recognizePii(value);
+  const detected = fallback && value ? [{ category: fallback, value, start: 0, end: value.length, confidence: 1 }] : recognizePii(value);
+  const matches = [...detected, ...localEntities].sort((left, right) => left.start - right.start || right.end - left.end)
+    .filter((match, index, all) => index === 0 || match.start >= all[index - 1]!.end);
   let offset = 0; let sanitized = value; const records: { category: PiiCategory; token: string | null }[] = [];
   for (const match of matches) { const token = match.category === "PASSWORD" ? null : vault.tokenize(match.category, match.value); const replacement = token ? `<${token}>` : "<PASSWORD_FIELD>"; const start = match.start + offset; sanitized = `${sanitized.slice(0, start)}${replacement}${sanitized.slice(start + match.value.length)}`; offset += replacement.length - match.value.length; records.push({ category: match.category, token }); }
   return { value: sanitized, records };
 }
 
-export function sanitizeTask(task: string, vault: TokenVault): string { return replacePii(task, vault).value; }
+export function sanitizeTask(task: string, vault: TokenVault, localEntities: readonly PiiMatch[] = []): string { return replacePii(task, vault, undefined, localEntities).value; }
 
-export function sanitizeSemanticNodes(nodes: readonly RawSemanticNode[], vault: TokenVault): SanitizationResult {
+export function sanitizeSemanticNodes(nodes: readonly RawSemanticNode[], vault: TokenVault, localEntities: ReadonlyMap<string, readonly PiiMatch[]> = new Map()): SanitizationResult {
   const redactions: RedactionRecord[] = [];
   const elements = nodes.map((node) => {
     const category = sensitiveCategoryFromDom(node);
     const privateValue = node.value || node.text || "";
-    const result = replacePii(privateValue, vault, category);
+    const result = replacePii(privateValue, vault, category, localEntities.get(node.id));
     for (const record of result.records) redactions.push({ type: record.category, token: record.token, bbox: node.bbox, method: methodFor(record.category) });
     if (category && result.records.length === 0) redactions.push({ type: category, token: null, bbox: node.bbox, method: methodFor(category) });
     return { id: node.id, role: node.role, semanticType: category?.toLowerCase() || node.inputType, label: node.label ? replacePii(node.label, vault).value : undefined, text: privateValue ? result.value : undefined, bbox: node.bbox, visible: node.visible, interactive: node.interactive, confidence: 0.99, source: node.source };

@@ -14,13 +14,18 @@ export class OnnxPerceptionBackend implements PerceptionBackend {
   constructor(private readonly modelUrl: string) {}
   async load(): Promise<void> {
     try {
-      // The WASM runtime is a packaged local extension asset, loaded lazily only after model selection.
-      // WebGPU remains an interchangeable backend; semantic mode is the safe fallback.
+      // Both runtimes are packaged extension assets. Prefer WebGPU for local
+      // inference, then fall back to cross-browser WASM and finally semantics.
       const runtimeUrl = (browser.runtime as unknown as { getURL(path: string): string }).getURL("ort/ort.wasm.min.mjs");
       const ortRuntime = await import(/* @vite-ignore */ runtimeUrl) as typeof ort;
-      this.session = await ortRuntime.InferenceSession.create(this.modelUrl, { executionProviders: ["wasm"] });
       this.ortRuntime = ortRuntime;
-      this.runtime = "wasm";
+      try {
+        this.session = await ortRuntime.InferenceSession.create(this.modelUrl, { executionProviders: ["webgpu"] });
+        this.runtime = "webgpu";
+      } catch {
+        this.session = await ortRuntime.InferenceSession.create(this.modelUrl, { executionProviders: ["wasm"] });
+        this.runtime = "wasm";
+      }
     } catch { this.runtime = "semantic"; }
   }
   async analyze(image: ImageData, regions: readonly { id: string; bbox: BoundingBox }[] = []): Promise<VisualElement[]> {

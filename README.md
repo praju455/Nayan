@@ -26,7 +26,7 @@ Raw pixels may exist only in browser memory for local processing. If local perce
 
 - WXT Manifest V3 extension with Chrome and Firefox build targets.
 - Local capture, DOM/ARIA extraction, scene fusion, and recapture loop.
-- Local MobileNetV3 GUI classification, UltraFace face detection, and canvas-only Tesseract OCR.
+- Local MobileNetV3 GUI classification, UltraFace face detection, canvas-only Tesseract OCR, and optional quantized TinyBERT named-entity recognition through Transformers.js.
 - PII recognition for email, phone, card (Luhn), PAN, Aadhaar (Verhoeff), IP, DOB, and bank account, plus deterministic DOM field rules.
 - Task-scoped local token vault: the planner sees `<EMAIL_…>`, never the source email.
 - Separate sanitized-output construction, pixel masking/face blur, redaction verification, and a key/value payload guard.
@@ -79,6 +79,14 @@ Build the extension:
 npm run build --workspace=@nayan/extension
 ```
 
+To include the optional local NER model for person-name detection, prepare it before building:
+
+```bash
+npm run prepare:ner --workspace=@nayan/extension
+```
+
+This command downloads the reviewed, quantized ONNX model into ignored local build assets. At runtime the extension disables remote model access; if the model is absent or unavailable, deterministic PII and DOM rules still run locally and Nayan never uploads page text as a fallback.
+
 Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/.output/chrome-mv3`. Open the synthetic portal, run the supplied task, inspect **What the server sees**, and approve the local confirmation.
 
 For Firefox:
@@ -123,7 +131,7 @@ The payload guard rejects both forbidden key names and PII under innocuous-looki
 
 ## Models and honest limits
 
-The extension packages local GUI-classification, face-detection, ONNX WASM, and English OCR assets. WASM is the verified cross-browser baseline; DOM/ARIA semantic mode is the safe fallback if a model fails.
+The extension packages local GUI-classification, face-detection, ONNX WASM, and English OCR assets. The optional NER asset uses Transformers.js with WebGPU first and local WASM fallback. WASM is the verified cross-browser baseline; DOM/ARIA semantic mode is the safe fallback if a model fails. Review the model's upstream licence before redistributing a packaged build.
 
 The included planner is deterministic. Hosted reasoning must be configured and evaluated for the target domain. The GUI classifier complements DOM identity rather than replacing a dedicated pixel-only GUI detector. OCR and face detection need target-domain evaluation before deployment. Nayan is a technical prototype, not a compliance certification or a defence against a compromised browser.
 

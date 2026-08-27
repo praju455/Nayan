@@ -14,6 +14,7 @@ import type { OcrText } from "../ocr/selective-ocr";
 import { alignNodesToCapture, type Viewport } from "../capture/coordinates";
 import { confirmationForAction } from "../policy/action-policy";
 import { isSiteAllowed } from "../policy/site-policy";
+import { LocalNerBackend } from "../pii/local-ner";
 
 export type AgentRunResult = Readonly<{ status: "confirmation_required" | "done" | "acted" | "blocked"; action: AgentAction; redactionCount: number; modelRuntime: "webgpu" | "wasm" | "semantic"; safeContext: SanitizedContextPackage; localPreviewDataUrl?: string; message?: string }>;
 type ActiveTask = Readonly<{ tabId: number; task: string; serverUrl: string; autoSubmitDemo: boolean }>;
@@ -25,9 +26,10 @@ export class NayanAgent {
   private active?: ActiveTask;
   private readonly perception = new OnnxPerceptionBackend((browser.runtime as unknown as { getURL(path: string): string }).getURL("models/mobilenetv3_small.onnx"));
   private readonly faceDetector = new OnnxFaceDetector();
+  private readonly ner = new LocalNerBackend();
   async start(tabId: number, task: string, serverUrl: string, autoSubmitDemo = false): Promise<AgentRunResult> {
     // Only the already-sanitized task survives a service-worker suspension.
-    this.active = { tabId, task: sanitizeTask(task, this.vault), serverUrl, autoSubmitDemo };
+    this.active = { tabId, task: sanitizeTask(task, this.vault, await this.ner.recognize(task)), serverUrl, autoSubmitDemo };
     await browser.storage.session.set({ [activeTaskKey]: this.active });
     this.step = 0;
     return this.runStep(false);
@@ -68,7 +70,8 @@ export class NayanAgent {
     const semanticNodes = [...domNodes, ...ocr.map((result, index): RawSemanticNode => ({ id: `ocr_${index}`, tag: "canvas", role: "text", text: result.text, bbox: result.bbox, visible: true, interactive: false, disabled: false, source: ["ocr"] }))];
     const nodes = alignNodesToCapture(semanticNodes, viewport, rawFrame);
     const vision = await this.analyzeLocally(rawFrame.image, nodes);
-    const sanitized = sanitizeSemanticNodes(nodes, this.vault);
+    const nerByNode = new Map(await Promise.all(nodes.filter((node) => node.visible && (node.value || node.text)).map(async (node) => [node.id, await this.ner.recognize(node.value || node.text || "")] as const)));
+    const sanitized = sanitizeSemanticNodes(nodes, this.vault, nerByNode);
     const faceRedactions = asFaceRedactions(await this.faceDetector.detect(rawFrame.image));
     const elements = fuseSemanticAndVisual(nodes, sanitized.elements, vision);
     const redactions = [...sanitized.redactions, ...faceRedactions];

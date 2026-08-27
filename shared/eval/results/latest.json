@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T17:19:42.909Z",
+  "generatedAt": "2026-08-27T17:37:02.435Z",
   "source": "synthetic labelled fixtures",
   "metrics": {
     "visualContextAccuracy": 1,
@@ -7,12 +7,16 @@
     "piiRecall": 1,
     "piiF1": 1,
     "redactionVerificationPassRate": 1,
-    "localRuntimeBytes": 27370160
+    "localCoreRuntimeBytes": 27370160,
+    "localNerRuntimeBytes": 42360013,
+    "localRuntimeBytes": 69730173,
+    "medianPiiFixtureScanMs": 0.0014579999999995152
   },
   "counts": {
     "piiTruePositives": 6,
     "piiFalsePositives": 0,
     "piiFalseNegatives": 0,
-    "visualFixtures": 4
+    "visualFixtures": 4,
+    "piiFixtureSamples": 700
   }
 }

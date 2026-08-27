@@ -10,3 +10,5 @@ __pycache__/
 .DS_Store
 server/.pytest_cache/
 demo/benchmark-dashboard/dist/
+extension/public/models/ner/
+extension/public/models/ner-runtime/
