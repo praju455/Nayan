@@ -18,39 +18,7 @@ class SafeRuleReasoningBackend:
         # The extension appends a safety note containing the words "send" and
         # "submit". Only the original user instruction may authorize the
         # confirmation pathway.
-        task = scene.task.split("\nPrivate chat recipient:", 1)[0].split("\nPrivate draft text:", 1)[0].lower()
-
-        recipient_token = re.search(r"<(USER_SELECTED_RECIPIENT_[A-Za-z0-9_-]+)>", scene.task)
-        if recipient_token:
-            if scene.state.step == 0:
-                search = next(
-                    (
-                        element for element in scene.elements
-                        if element.interactive and element.role == "textbox"
-                        and "search" in " ".join(filter(None, [element.label, element.text])).lower()
-                    ),
-                    None,
-                )
-                if not search:
-                    return ActionResponse(
-                        action="done",
-                        confidence=0.9,
-                        reason="No visible conversation search field was found on this site.",
-                    )
-                return ActionResponse(
-                    action="type",
-                    targetId=search.id,
-                    valueToken=recipient_token.group(1),
-                    confidence=0.95,
-                    reason="A visible conversation search field was found. Nayan will search using the local recipient token.",
-                )
-            if scene.state.step == 1:
-                return ActionResponse(
-                    action="click_visible_text",
-                    valueToken=recipient_token.group(1),
-                    confidence=0.94,
-                    reason="Click only the exact visible text matching the locally held recipient.",
-                )
+        task = scene.task.split("\nPrivate draft text:", 1)[0].lower()
 
         # General, locally-tokenized message drafting. This intentionally has
         # no send/click branch: drafting is reversible, while sending remains

@@ -25,20 +25,12 @@ function replacePii(value: string, vault: TokenVault, fallback?: PiiCategory): {
  * exact text that Nayan may type is more sensitive: it is always represented
  * by a task-scoped token, even when it does not look like conventional PII.
  */
-export function sanitizeTask(task: string, vault: TokenVault, draftText?: string, recipient?: string): string {
+export function sanitizeTask(task: string, vault: TokenVault, draftText?: string): string {
   const instruction = replacePii(task, vault).value;
   const privateDraft = draftText?.trim();
-  const privateRecipient = recipient?.trim();
-  const details: string[] = [];
-  if (privateRecipient) {
-    const token = vault.tokenize("USER_SELECTED_RECIPIENT", privateRecipient);
-    details.push(`Private chat recipient: <${token}>. Open only the exact visible matching conversation.`);
-  }
-  if (privateDraft) {
-    const token = vault.tokenize("USER_PROVIDED_TEXT", privateDraft);
-    details.push(`Private draft text: <${token}>. Type it only into a visible message composer or text field. Never send, submit, or click a send control.`);
-  }
-  return details.length ? `${instruction}\n${details.join("\n")}` : instruction;
+  if (!privateDraft) return instruction;
+  const token = vault.tokenize("USER_PROVIDED_TEXT", privateDraft);
+  return `${instruction}\nPrivate draft text: <${token}>. Type it only into a visible message composer or text field. Never send, submit, or click a send control.`;
 }
 
 export function sanitizeSemanticNodes(nodes: readonly RawSemanticNode[], vault: TokenVault): SanitizationResult {

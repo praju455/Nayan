@@ -85,22 +85,3 @@ def test_planner_clicks_send_only_after_message_confirmation() -> None:
     assert response.status_code == 200
     assert response.json()["action"] == "click"
     assert response.json()["targetId"] == "send"
-
-
-def test_planner_searches_then_selects_a_private_recipient_locally() -> None:
-    start = {
-        **safe_payload,
-        "task": "Send a message after confirmation.\nPrivate chat recipient: <USER_SELECTED_RECIPIENT_1_a1>.",
-        "elements": [
-            {"id": "search", "role": "textbox", "semanticType": "search", "label": "Search", "text": None, "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["dom"]},
-        ],
-    }
-    first = TestClient(app).post("/v1/agent/next-action", json=start)
-    assert first.status_code == 200
-    assert first.json()["action"] == "type"
-    assert first.json()["targetId"] == "search"
-    assert first.json()["valueToken"] == "USER_SELECTED_RECIPIENT_1_a1"
-    second = TestClient(app).post("/v1/agent/next-action", json={**start, "state": {"step": 1, "pageFingerprint": "abcdef"}})
-    assert second.status_code == 200
-    assert second.json()["action"] == "click_visible_text"
-    assert second.json()["valueToken"] == "USER_SELECTED_RECIPIENT_1_a1"

@@ -49,7 +49,7 @@ class SanitizedContext(StrictModel):
     redactedScreenshot: str | None = Field(default=None, max_length=4_000_000)
 
 
-ActionName = Literal["click", "type", "scroll", "select", "click_visible_text", "focus", "navigate", "wait", "done", "confirm_needed"]
+ActionName = Literal["click", "type", "scroll", "select", "focus", "navigate", "wait", "done", "confirm_needed"]
 
 
 class ActionResponse(StrictModel):
@@ -66,7 +66,7 @@ class ActionResponse(StrictModel):
     def action_shape_is_safe(self) -> "ActionResponse":
         if self.action in {"click", "type", "select", "focus"} and not self.targetId:
             raise ValueError("targetId is required for target actions")
-        if self.action in {"type", "select", "click_visible_text"} and not self.valueToken:
+        if self.action in {"type", "select"} and not self.valueToken:
             raise ValueError("field-changing actions require a placeholder token")
         if self.action == "navigate" and not self.destination:
             raise ValueError("navigate action requires destination")
