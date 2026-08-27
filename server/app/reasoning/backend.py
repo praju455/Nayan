@@ -229,7 +229,6 @@ class CompatibleChatBackend:
 class FallbackReasoningBackend:
     def __init__(self, backends: list[ReasoningBackend]) -> None:
         self.backends = backends
-        self.safe_recovery = SafeRuleReasoningBackend()
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
         last_error: Exception | None = None
@@ -237,10 +236,6 @@ class FallbackReasoningBackend:
             try:
                 action = await backend.next_action(scene, reasoning_context)
                 ensure_action_is_grounded(action, scene)
-                if action.action == "done" and "<USER_PROVIDED_TEXT_" in scene.task:
-                    recovery = await self.safe_recovery.next_action(scene, reasoning_context)
-                    if recovery.action != "done":
-                        return recovery
                 return action
             except (PlannerUnavailableError, RuntimeError) as error:
                 last_error = error
