@@ -113,20 +113,23 @@ NAYAN_REASONING_TOKEN=optional-token
 
 The adapter transmits only sanitized context. The planner must return one action matching `shared/schemas/action-response.schema.json`; the server and browser each validate it before execution.
 
-### Gemini planner with Groq fallback
+### OpenAI hosted planner
 
-Nayan uses Gemini as its hosted planner. Groq is contacted only if Gemini cannot return a valid action. Never place an API key in the extension, source code, or chat. Instead, copy `server/.env.example` to an untracked `server/.env`, add one or both real keys locally, then start the server with those environment variables loaded:
+Nayan also includes a direct OpenAI Responses adapter with strict JSON-schema actions and `store: false`. Never place a key in the extension, source code, or chat. Instead, copy `server/.env.example` to an untracked `server/.env`, set the real key locally, then start the server with those environment variables loaded:
 
 ```bash
 cd server
 cp .env.example .env
-# Edit .env locally and add GEMINI_API_KEY and optionally GROQ_API_KEY.
-# Do not commit this file.
+# Edit .env locally and replace OPENAI_API_KEY. Do not commit this file.
 set -a && source .env && set +a
-.venv313/bin/uvicorn app.main:app --reload --port 8000
+.venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-`NAYAN_REASONING_BACKENDS=gemini,groq` is the default order. The same Nayan server and browser validators enforce privacy and action policy regardless of which provider responds. [Gemini compatibility guide](https://ai.google.dev/gemini-api/docs/openai) · [Groq compatibility guide](https://console.groq.com/docs/openai)
+The default model setting is `gpt-5`; change `NAYAN_OPENAI_MODEL` in `server/.env` only to a model available to your API project. OpenAI's Responses API supports server-side instructions, text input, `store: false`, and strict JSON-schema output, which Nayan uses to constrain the planner response. [Official OpenAI Responses API reference](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
+
+### Gemini and Groq fallbacks
+
+Set `NAYAN_REASONING_BACKENDS` to an ordered list such as `openai,gemini,groq`. Nayan uses the first provider with a locally configured key and tries the next provider only if the current one fails to return a valid action. Gemini and Groq use their documented OpenAI-compatible chat-completions endpoints, while the same Nayan server/browser validators still enforce privacy and action policy. [Gemini compatibility guide](https://ai.google.dev/gemini-api/docs/openai) · [Groq compatibility guide](https://console.groq.com/docs/openai)
 
 ## Never transmitted
 

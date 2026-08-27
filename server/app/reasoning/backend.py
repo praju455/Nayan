@@ -184,8 +184,48 @@ For send, submit, pay, purchase, delete, publish, or share controls, return conf
 If the goal cannot be completed safely from the current context, return done with a clear reason."""
 
 
-class CompatibleChatBackend:
-    """Gemini/Groq chat-completions adapter with server-side validation."""
+def response_output_text(payload: dict) -> str:
+    direct = payload.get("output_text")
+    if isinstance(direct, str):
+        return direct
+    for item in payload.get("output", []):
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []):
+            if isinstance(content, dict) and content.get("type") == "output_text" and isinstance(content.get("text"), str):
+                return content["text"]
+    raise PlannerUnavailableError("Hosted planner returned no structured action text")
+
+
+class OpenAIResponsesBackend:
+    """OpenAI Responses adapter. It receives only the already-sanitized context."""
+
+    def __init__(self, api_key: str, model: str, base_url: str = "https://api.openai.com/v1") -> None:
+        self.api_key = api_key
+        self.model = model
+        self.url = f"{base_url.rstrip('/')}/responses"
+
+    async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
+        body = {
+            "model": self.model,
+            "instructions": PLANNER_INSTRUCTIONS,
+            "input": reasoning_context,
+            "store": False,
+            "max_output_tokens": 600,
+            "text": {"format": {"type": "json_schema", "name": "nayan_action", "strict": True, "schema": ACTION_SCHEMA}},
+        }
+        headers = {"authorization": f"Bearer {self.api_key}", "content-type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=25) as client:
+                response = await client.post(self.url, json=body, headers=headers)
+                response.raise_for_status()
+            return ActionResponse.model_validate(json.loads(response_output_text(response.json())))
+        except (httpx.HTTPError, json.JSONDecodeError, ValueError) as error:
+            raise PlannerUnavailableError("Hosted planner could not return a safe action") from error
+
+
+class OpenAICompatibleChatBackend:
+    """Gemini/Groq-compatible chat-completions adapter with server validation."""
 
     def __init__(self, api_key: str, model: str, base_url: str) -> None:
         self.api_key = api_key
@@ -228,24 +268,30 @@ class FallbackReasoningBackend:
 
 
 def provider_backend(name: str) -> ReasoningBackend | None:
+    if name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        return OpenAIResponsesBackend(api_key, os.getenv("NAYAN_OPENAI_MODEL", "gpt-5"), os.getenv("NAYAN_OPENAI_BASE_URL", "https://api.openai.com/v1")) if api_key else None
     if name == "gemini":
         api_key = os.getenv("GEMINI_API_KEY")
-        return CompatibleChatBackend(api_key, os.getenv("NAYAN_GEMINI_MODEL", "gemini-3.7-flash"), os.getenv("NAYAN_GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")) if api_key else None
+        return OpenAICompatibleChatBackend(api_key, os.getenv("NAYAN_GEMINI_MODEL", "gemini-3.7-flash"), os.getenv("NAYAN_GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")) if api_key else None
     if name == "groq":
         api_key = os.getenv("GROQ_API_KEY")
-        return CompatibleChatBackend(api_key, os.getenv("NAYAN_GROQ_MODEL", "qwen/qwen3.6-27b"), os.getenv("NAYAN_GROQ_BASE_URL", "https://api.groq.com/openai/v1")) if api_key else None
+        return OpenAICompatibleChatBackend(api_key, os.getenv("NAYAN_GROQ_MODEL", "openai/gpt-oss-20b"), os.getenv("NAYAN_GROQ_BASE_URL", "https://api.groq.com/openai/v1")) if api_key else None
     return None
 
 
 def configured_backend() -> ReasoningBackend:
-    configured_priority = os.getenv("NAYAN_REASONING_BACKENDS")
-    priority = [name.strip().lower() for name in (configured_priority or "gemini,groq").split(",") if name.strip()]
-    backends = [backend for name in priority if (backend := provider_backend(name))]
-    if backends:
-        return FallbackReasoningBackend(backends)
-    if configured_priority:
+    priority = [name.strip().lower() for name in os.getenv("NAYAN_REASONING_BACKENDS", "").split(",") if name.strip()]
+    if priority:
+        backends = [backend for name in priority if (backend := provider_backend(name))]
         if not backends:
-            raise RuntimeError("No API key was found for the configured Gemini/Groq planners")
+            raise RuntimeError("No API key was found for any configured hosted planner")
+        return FallbackReasoningBackend(backends)
+    if os.getenv("NAYAN_REASONING_BACKEND") == "openai":
+        backend = provider_backend("openai")
+        if not backend:
+            raise RuntimeError("OPENAI_API_KEY is required for the OpenAI planner")
+        return backend
     if os.getenv("NAYAN_REASONING_BACKEND") == "hosted":
         endpoint = os.environ.get("NAYAN_REASONING_URL")
         if not endpoint:
