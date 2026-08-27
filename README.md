@@ -158,6 +158,24 @@ The extension packages local GUI-classification, face-detection, ONNX WASM, and 
 
 The included planner is deterministic. Hosted reasoning must be configured and evaluated for the target domain. The GUI classifier complements DOM identity rather than replacing a dedicated pixel-only GUI detector. OCR and face detection need target-domain evaluation before deployment. Nayan is a technical prototype, not a compliance certification or a defence against a compromised browser.
 
+## Project roadmap
+
+### Done
+
+- Chrome/Firefox extension, local screenshot and DOM/ARIA perception, and WebGPU-first/WASM-fallback inference.
+- Local PII and face protection: passwords are blacked out, faces are blurred, and PII is replaced with task-scoped placeholders before the privacy boundary.
+- Strict FastAPI schema gate, Gemini-first/Groq-fallback planning from sanitized context, and browser-side live-target/action validation.
+- Confirmation gates for consequential actions such as send, submit, delete, and pay; visual-only regions are never executable.
+- Reproducible synthetic regression evaluation and dashboard for grounding, PII, redaction, package size, and local scan latency.
+- A real-application demo path using a test Gmail account or public GitHub/docs page; the mock portal is only an offline regression fixture.
+
+### Next steps before submission
+
+- Record the exact source URL, version, licence, and checksum for packaged MobileNetV3 and UltraFace binaries.
+- Run Gemini and Groq live using project API keys, then test failure and confirmation behaviour.
+- Build the labelled real-world benchmark set for screenshots, PII, faces, and UI grounding using the datasets above plus test-account captures.
+- Measure latency and resource use on the judging laptop, improve the visual detector toward a dedicated OmniParser-style UI detector, and test on Chrome and Firefox devices.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
