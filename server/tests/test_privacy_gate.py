@@ -55,17 +55,3 @@ def test_planner_drafts_locally_tokenized_message_without_send_action() -> None:
     assert response.json()["action"] == "type"
     assert response.json()["targetId"] == "composer"
     assert response.json()["valueToken"] == "USER_PROVIDED_TEXT_1_a1"
-
-
-def test_planner_stops_after_one_private_draft_action() -> None:
-    payload = {
-        **safe_payload,
-        "task": "Draft the private message. Private draft text: <USER_PROVIDED_TEXT_1_a1>.",
-        "state": {"step": 1, "pageFingerprint": "abcdef"},
-        "elements": [
-            {"id": "composer", "role": "textbox", "semanticType": "contenteditable", "label": "Message", "text": None, "bbox": [1, 1, 20, 10], "visible": True, "interactive": True, "confidence": 0.99, "source": ["aria"]},
-        ],
-    }
-    response = TestClient(app).post("/v1/agent/next-action", json=payload)
-    assert response.status_code == 200
-    assert response.json()["action"] == "done"

@@ -22,12 +22,6 @@ class SafeRuleReasoningBackend:
         # an explicit high-impact action that must be confirmed separately.
         draft_token = re.search(r"<(USER_PROVIDED_TEXT_[A-Za-z0-9_-]+)>", scene.task)
         if draft_token and any(word in task for word in ("draft", "message", "type", "write")):
-            if scene.state.step > 0:
-                return ActionResponse(
-                    action="done",
-                    confidence=0.99,
-                    reason="The private message draft has already been entered. Stopping without sending it.",
-                )
             textboxes = [
                 element for element in scene.elements
                 if element.interactive and element.role == "textbox" and not element.text

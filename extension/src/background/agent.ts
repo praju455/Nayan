@@ -94,15 +94,6 @@ export class NayanAgent {
     if (invalid) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: invalid };
     const outcome = await this.sendToContent<{ ok: boolean; reason?: string }>(tabId, { type: "NAYAN_EXECUTE", action, tokenValue: action.valueToken ? this.vault.resolve(action.valueToken) : undefined });
     if (!outcome.ok) return { status: "blocked", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: outcome.reason };
-    // A user-provided chat draft is deliberately a single safe action. Some
-    // rich-text web composers do not expose their new value on the container
-    // itself, so re-reading the page could otherwise look like an empty field
-    // and repeat the draft. Stop before a second pass, never near Send.
-    if (action.action === "type" && action.valueToken?.startsWith("USER_PROVIDED_TEXT_")) {
-      this.vault.clear();
-      await this.clearActiveTask();
-      return { status: "done", action, redactionCount: redactions.length, modelRuntime: this.perception.runtime, safeContext: artifact.context, localPreviewDataUrl: preview, message: "Draft entered locally. Nayan stopped without sending it." };
-    }
     // Chrome allows at most two captureVisibleTab calls per second. Leave a
     // deliberate buffer so multi-field tasks remain reliable on every step.
     if (this.step < 10) { await new Promise<void>((resolve) => setTimeout(resolve, 650)); return this.runStep(false); }
