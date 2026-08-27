@@ -6,22 +6,13 @@ function isRegularSite(tab: TaskTabCandidate): boolean {
   return Boolean(tab.url && /^https?:\/\//.test(tab.url));
 }
 
-/** Return an already-open website explicitly named in the user's task. */
-export function selectMatchingTaskTab(tabs: readonly TaskTabCandidate[], task: string): TaskTabCandidate | undefined {
+/** Select an already-open website explicitly suggested by the user's task. */
+export function selectTaskTab(tabs: readonly TaskTabCandidate[], task: string): TaskTabCandidate | undefined {
   const candidates = tabs.filter((tab) => Number.isInteger(tab.id) && isRegularSite(tab));
   const terms = [...new Set((task.toLowerCase().match(/[a-z0-9][a-z0-9_.-]{2,}/g) ?? []).filter((term) => !ignoredTerms.has(term)))];
   const scored = candidates.map((tab) => {
     const searchable = `${tab.url ?? ""} ${tab.title ?? ""}`.toLowerCase();
     return { tab, score: terms.reduce((total, term) => total + (searchable.includes(term) ? 1 : 0), 0) };
   }).sort((left, right) => right.score - left.score || Number(right.tab.active) - Number(left.tab.active));
-  return scored.find(({ score }) => score > 0)?.tab;
-}
-
-/**
- * Prefer the specific website named in the task.  Outside a New Tab launch,
- * falling back to the active regular page keeps ordinary in-page tasks simple.
- */
-export function selectTaskTab(tabs: readonly TaskTabCandidate[], task: string): TaskTabCandidate | undefined {
-  const candidates = tabs.filter((tab) => Number.isInteger(tab.id) && isRegularSite(tab));
-  return selectMatchingTaskTab(tabs, task) ?? candidates.find((tab) => tab.active) ?? candidates[0];
+  return scored.find(({ score }) => score > 0)?.tab ?? candidates.find((tab) => tab.active) ?? candidates[0];
 }
