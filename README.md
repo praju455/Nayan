@@ -75,7 +75,6 @@ shared/policy/             Versioned redaction policy
 shared/eval/               Labelled fixtures and generated benchmark result
 demo/mock-portal/          Synthetic reimbursement scenario
 demo/benchmark-dashboard/  Local evaluation dashboard
-docs/                      Architecture, safety, demo, compatibility
 scripts/                   Benchmark harness
 ```
 
@@ -114,7 +113,7 @@ npm run prepare:ner --workspace=@nayan/extension
 
 This command downloads the reviewed, quantized ONNX model into ignored local build assets. At runtime the extension disables remote model access; if the model is absent or unavailable, deterministic PII and DOM rules still run locally and Nayan never uploads page text as a fallback.
 
-Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/.output/chrome-mv3`. For the recommended demo, open a real browser application in a test account, approve that site in Nayan, and run a low-risk task such as opening a Gmail draft or scrolling a public GitHub page. See [the real-application demo script](docs/demo-script.md). The synthetic portal can still be started with `npm run dev --workspace=@nayan/mock-portal` for offline regression testing.
+Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/.output/chrome-mv3`. For the recommended demo, open a real browser application in a test account, approve that site in Nayan, and run a low-risk task such as opening a Gmail draft or scrolling a public GitHub page. The synthetic portal can still be started with `npm run dev --workspace=@nayan/mock-portal` for offline regression testing.
 
 For Firefox:
 
@@ -122,7 +121,7 @@ For Firefox:
 npm exec --workspace=@nayan/extension wxt build -- --browser firefox
 ```
 
-Load `extension/.output/firefox-mv2` as a temporary add-on. See [browser compatibility](docs/browser-compatibility.md).
+Load `extension/.output/firefox-mv2` as a temporary add-on. Browser support details are included in the Documentation section below.
 
 ## Verify and evaluate
 
@@ -195,14 +194,47 @@ The included planner is deterministic unless Groq is configured. Hosted reasonin
 
 ## Documentation
 
-- Architecture and benchmark plan: this README
-- [Architecture decisions](docs/architecture-decisions.md)
-- [Privacy boundary](docs/privacy-boundary.md)
-- [Threat model](docs/threat-model.md)
-- [Evaluation](docs/evaluation.md)
-- [Browser compatibility](docs/browser-compatibility.md)
-- [Demo script](docs/demo-script.md)
-- [Advanced roadmap](docs/future-wow-roadmap.md)
+### Design decisions
+
+- Raw artifacts are local-only types; a final key/value payload guard blocks raw frames, DOM, OCR, token vaults, and plaintext PII.
+- DOM/ARIA is used for exact control identity; visual perception improves layout understanding but never makes a pixel-only region executable.
+- The browser is the final authority: every action is revalidated against the live page and confirmation policy.
+- TinyBERT NER is optional, packaged locally, and cannot download a remote model at runtime.
+- Connected mode uses open-weight planners; a local Ollama planner is the future fully local option.
+
+### Privacy and threat model
+
+| Risk | Local control |
+| --- | --- |
+| Raw screen, DOM, OCR, or PII leakage | Construct a new sanitized package and block forbidden keys/values before any request. |
+| Faces, passwords, and sensitive fields | Blur faces, black out passwords, redact/tokenize PII, and keep originals in an in-memory task vault. |
+| Prompt injection or unsafe planner output | Treat page text as untrusted; allow only one schema-validated action. |
+| Stale targets or consequential actions | Recheck the live DOM target and require confirmation for send, submit, delete, pay, and similar actions. |
+| Model, network, or policy failure | Stop locally; never use a raw-data fallback. |
+| Debug or telemetry leakage | Do not include page content or vault values in telemetry contracts. |
+
+### Evaluation and browser support
+
+`npm run evaluate` generates measured synthetic regression results for visual-context agreement, PII precision/recall, redaction accuracy, package size, and local scan latency. The benchmark plan above is required before making real-world accuracy claims.
+
+| Capability | Chromium | Firefox |
+| --- | --- | --- |
+| DOM/ARIA extraction and safe actions | Supported | Supported |
+| Visible-tab capture | `tabs.captureVisibleTab` | `browser.tabs.captureVisibleTab` |
+| Local inference baseline | WASM | WASM |
+| WebGPU acceleration | Preferred when available | Availability varies; WASM remains the baseline |
+
+### Real-application demo
+
+1. Use a test Gmail account or a public GitHub/docs page, then approve only that site in Nayan.
+2. Give a low-risk task such as **“Open Compose and stop”** or **“Scroll to a visible section.”**
+3. Show local redaction, the sanitized planner request, and the locally validated action. Do not send, delete, pay, or expose real personal data.
+
+If a site changes, shows a CAPTCHA, or blocks automation, Nayan stops safely; use the public-site or offline regression alternative.
+
+### Longer-term roadmap
+
+Signed local action receipts, an Ollama sovereign mode, policy packs and prompt-injection detection, adversarial test pages, model/policy signing, multi-tab workflows, and a privacy/failure-simulation dashboard.
 
 ## Contribution standard
 
