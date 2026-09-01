@@ -30,7 +30,7 @@ Raw pixels may exist only in browser memory for local processing. If local perce
 - PII recognition for email, phone, card (Luhn), PAN, Aadhaar (Verhoeff), IP, DOB, and bank account, plus deterministic DOM field rules.
 - Task-scoped local token vault: the planner sees `<EMAIL_…>`, never the source email.
 - Separate sanitized-output construction, pixel masking/face blur, redaction verification, and a key/value payload guard.
-- FastAPI schema gate, injection-aware context builder, offline rule planner, Gemini-first/Groq-fallback hosted planner, and server action validation.
+- FastAPI schema gate, injection-aware context builder, offline rule planner, Groq-hosted open-weight planner support, and server action validation.
 - Browser action validation, confirmation-gated submit flow, safe DOM actions, payload inspector, and real-application demo guidance.
 - Generated benchmark results and judge-facing dashboard.
 
@@ -44,7 +44,8 @@ Raw pixels may exist only in browser memory for local processing. If local perce
 | TinyBERT NER | Detects person names and replaces them with local placeholders. | [TinyBERT NER ONNX](https://huggingface.co/onnx-community/TinyBERT-finetuned-NER-ONNX) |
 | Transformers.js + ONNX Runtime Web | Runs local models in-browser, preferring WebGPU with WASM fallback. | [Transformers.js](https://github.com/huggingface/transformers.js) and ONNX Runtime Web |
 | Tesseract OCR | Reads eligible image/canvas text locally. | Tesseract.js |
-| Gemini, then Groq | Plans from sanitized context only; used only when their keys are configured. | [Gemini API](https://ai.google.dev/api/generate-content) and [Groq API](https://console.groq.com/docs/api-reference) |
+| Open-weight planner | Reasons from sanitized context only in the official connected SIH path. | [Groq API](https://console.groq.com/docs/api-reference) hosting a Llama- or Qwen-family model |
+| Local planner (roadmap) | Keeps even sanitized context on the device or local network. | Gemma, Qwen, or Llama through Ollama |
 
 No AI provider receives the raw page, raw screenshot, or plaintext PII.
 
@@ -132,17 +133,17 @@ Check each dataset's licence before use or redistribution. Keep real-site captur
 
 ## Planner modes
 
-The default deterministic `rule` backend runs the offline regression fixture without credentials. For real application understanding, configure Gemini first with Groq as the fail-closed fallback:
+The default deterministic `rule` backend runs the offline regression fixture without credentials. The official connected SIH path uses Groq with an **open-weight**, offline-deployable model such as a Llama or Qwen family model:
 
 ```bash
-NAYAN_REASONING_BACKEND=cloud
-GEMINI_API_KEY=your-key
-NAYAN_GEMINI_MODEL=gemini-2.5-flash
-GROQ_API_KEY=your-fallback-key
+NAYAN_REASONING_BACKEND=groq
+GROQ_API_KEY=your-key
 NAYAN_GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-The server sends only its already-sanitized reasoning context to either provider. Gemini failure, malformed JSON, or an invalid action causes a Groq fallback; if both fail, Nayan stops rather than bypassing validation. The planner must return one action matching `shared/schemas/action-response.schema.json`; the server and browser each validate it before execution. Copy `server/.env.example` to a local ignored `.env` only if your launch setup loads environment files; never place keys in the extension.
+The server sends only its already-sanitized reasoning context to Groq. A malformed response or invalid action stops the task rather than bypassing validation. The planner must return one action matching `shared/schemas/action-response.schema.json`; the server and browser each validate it before execution. Record the exact model name, source, version, licence, and API configuration used in the final demo.
+
+The planned sovereign mode uses an open-weight Gemma, Qwen, or Llama model through Ollama on `localhost` or an approved local network. It is not yet wired into the runtime. The repository still contains a transitional Gemini adapter from an earlier prototype; it is not part of the official SIH architecture or submission configuration. Copy `server/.env.example` to a local ignored `.env` only if your launch setup loads environment files; never place keys in the extension.
 
 ## Never transmitted
 
@@ -156,7 +157,7 @@ The payload guard rejects both forbidden key names and PII under innocuous-looki
 
 The extension packages local GUI-classification, face-detection, ONNX WASM, and English OCR assets. The optional NER asset uses Transformers.js with WebGPU first and local WASM fallback. WASM is the verified cross-browser baseline; DOM/ARIA semantic mode is the safe fallback if a model fails. Review the model's upstream licence before redistributing a packaged build.
 
-The included planner is deterministic. Hosted reasoning must be configured and evaluated for the target domain. The GUI classifier complements DOM identity rather than replacing a dedicated pixel-only GUI detector. OCR and face detection need target-domain evaluation before deployment. Nayan is a technical prototype, not a compliance certification or a defence against a compromised browser.
+The included planner is deterministic unless Groq is configured. Hosted reasoning must be configured and evaluated for the target domain, and the official SIH configuration must use an open-weight model. The GUI classifier complements DOM identity rather than replacing a dedicated pixel-only GUI detector. OCR and face detection need target-domain evaluation before deployment. Nayan is a technical prototype, not a compliance certification or a defence against a compromised browser.
 
 ## Project roadmap
 
@@ -164,7 +165,7 @@ The included planner is deterministic. Hosted reasoning must be configured and e
 
 - Chrome/Firefox extension, local screenshot and DOM/ARIA perception, and WebGPU-first/WASM-fallback inference.
 - Local PII and face protection: passwords are blacked out, faces are blurred, and PII is replaced with task-scoped placeholders before the privacy boundary.
-- Strict FastAPI schema gate, Gemini-first/Groq-fallback planning from sanitized context, and browser-side live-target/action validation.
+- Strict FastAPI schema gate, Groq open-weight-planner support from sanitized context, and browser-side live-target/action validation.
 - Confirmation gates for consequential actions such as send, submit, delete, and pay; visual-only regions are never executable.
 - Reproducible synthetic regression evaluation and dashboard for grounding, PII, redaction, package size, and local scan latency.
 - A real-application demo path using a test Gmail account or public GitHub/docs page; the mock portal is only an offline regression fixture.
@@ -172,7 +173,7 @@ The included planner is deterministic. Hosted reasoning must be configured and e
 ### Next steps before submission
 
 - Record the exact source URL, version, licence, and checksum for packaged MobileNetV3 and UltraFace binaries.
-- Run Gemini and Groq live using project API keys, then test failure and confirmation behaviour.
+- Use an exact open-weight Groq model in the live demo, remove the transitional Gemini adapter, and add the optional Ollama sovereign mode.
 - Build the labelled real-world benchmark set for screenshots, PII, faces, and UI grounding using the datasets above plus test-account captures.
 - Measure latency and resource use on the judging laptop, improve the visual detector toward a dedicated OmniParser-style UI detector, and test on Chrome and Firefox devices.
 
