@@ -2,7 +2,7 @@
 
 ## ADR-001: Privacy boundary is enforced in types and runtime
 
-`LocalRawFrame` is branded as local-only and never appears in a transport API. The payload guard independently rejects raw-artifact keys and detected plaintext PII before a request is created. This supports the SIH privacy, redaction, and safety criteria.
+`LocalRawFrame` is branded as local-only and never appears in a transport API. The payload guard independently rejects raw-artifact keys and detected plaintext PII before a request is created. This supports the project's privacy, redaction, and safety criteria.
 
 ## ADR-002: DOM-first with local visual escalation
 
@@ -16,8 +16,8 @@ The server returns one constrained action. The extension verifies current-page s
 
 The extension uses Transformers.js as the browser inference interface for a quantized ONNX named-entity-recognition model. It is an enhancement for person-name detection, not a substitute for deterministic PII and DOM recognizers. The model and browser-only ONNX runtime are prepared as local extension assets; remote model loading is disabled before inference. Keeping this runtime outside the always-on service-worker bundle prevents optional ML code from inflating the base extension. If the asset, WebGPU, or WASM runtime is unavailable, Nayan continues with local deterministic detection or fails a privacy-sensitive action safely; it never sends text to a hosted model as a fallback.
 
-## ADR-005: Official SIH planner uses open-weight models only
+## ADR-005: Connected planner uses open-weight models only
 
-The official connected deployment uses an open-weight planner hosted through Groq (for example, a Llama or Qwen family model), because the problem statement permits cloud-hosted versions of offline-deployable models. A future sovereign mode can use the same class of model through Ollama on localhost or an approved local network. The deterministic rule backend remains available for offline regression tests.
+The connected deployment uses an open-weight planner hosted through Groq (for example, a Llama or Qwen family model). A future sovereign mode can use the same class of model through Ollama on localhost or an approved local network. The deterministic rule backend remains available for offline regression tests.
 
-An earlier Gemini adapter remains in the repository only as transitional implementation history. Gemini is proprietary and cannot be self-hosted, so it is not part of the official SIH architecture or submission demo configuration. Before submission, cloud configuration must be migrated to open-weight-only providers and models.
+An earlier Gemini adapter remains in the repository only as transitional implementation history. Gemini is proprietary and cannot be self-hosted, so it is not part of the target architecture or demo configuration. Before release, cloud configuration must be migrated to open-weight-only providers and models.
