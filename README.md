@@ -157,6 +157,20 @@ npm run benchmark:status
 
 This creates a deterministic, local-only 2,000-sample held-out English validation fixture with verified PII spans. It never sends the dataset to the planner or commits it to the repository.
 
+For WIDER FACE, download the official **validation images** and **face annotations** after licence review, then extract them under `shared/eval/external/wider-face/source/`:
+
+```text
+source/WIDER_val/images/
+source/wider_face_split/wider_face_val_bbx_gt.txt
+```
+
+```bash
+NAYAN_WIDER_FACE_LICENSE_APPROVED=1 npm run benchmark:wider-face
+npm run benchmark:status
+```
+
+The importer reads the official face boxes and creates a deterministic manifest for 500 validation images. Images and labels remain local and ignored by Git.
+
 ## Planner modes
 
 The default deterministic `rule` backend runs the offline regression fixture without credentials. Connected mode uses Groq with an **open-weight**, offline-deployable model such as a Llama or Qwen family model:

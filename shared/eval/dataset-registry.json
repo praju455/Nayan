@@ -17,7 +17,8 @@
       "target": "500 validation images with face boxes",
       "measures": ["face detection recall", "face-redaction coverage"],
       "localDirectory": "shared/eval/external/wider-face",
-      "licenceReviewRequired": true
+      "licenceReviewRequired": true,
+      "acquisition": "After licence review, manually download the official validation-image and face-annotation archives, then run the local manifest importer."
     },
     {
       "id": "groundcua",

@@ -11,6 +11,7 @@
     "evaluate": "node scripts/run-evaluation.mjs",
     "benchmark:status": "node scripts/benchmark-status.mjs",
     "benchmark:ai4privacy": "node scripts/prepare-ai4privacy-benchmark.mjs --accept-license",
+    "benchmark:wider-face": "node scripts/prepare-wider-face-benchmark.mjs --accept-license",
     "models:verify": "node scripts/verify-model-manifest.mjs"
   },
   "engines": { "node": ">=20" }
