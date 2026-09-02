@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-09-02T19:38:18.919Z",
+  "source": "Gretel Synthetic PII Finance Multilingual — local 2,000-sample test fixture",
+  "scope": "Character-span evaluation for labels mapped to Nayan's current local regex recognizer: email, phone_number, credit_card_number, ipv4, and date_of_birth.",
+  "metrics": {
+    "piiPrecision": 0.47806691449814126,
+    "piiRecall": 0.5845454545454546,
+    "piiF1": 0.5259713701431493
+  },
+  "counts": {
+    "samples": 2000,
+    "scopedExpectedSpans": 1100,
+    "truePositives": 643,
+    "falsePositives": 702,
+    "falseNegatives": 457
+  },
+  "byCategory": {
+    "EMAIL": {
+      "expected": 547,
+      "truePositives": 526,
+      "falsePositives": 21,
+      "falseNegatives": 21
+    },
+    "PHONE": {
+      "expected": 357,
+      "truePositives": 0,
+      "falsePositives": 30,
+      "falseNegatives": 357
+    },
+    "CREDIT_CARD": {
+      "expected": 48,
+      "truePositives": 20,
+      "falsePositives": 9,
+      "falseNegatives": 28
+    },
+    "IP_ADDRESS": {
+      "expected": 52,
+      "truePositives": 51,
+      "falsePositives": 0,
+      "falseNegatives": 1
+    },
+    "DATE_OF_BIRTH": {
+      "expected": 96,
+      "truePositives": 46,
+      "falsePositives": 642,
+      "falseNegatives": 50
+    }
+  }
+}

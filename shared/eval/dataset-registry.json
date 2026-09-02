@@ -3,13 +3,13 @@
   "purpose": "External benchmark acquisition registry. Dataset files remain local and are never committed.",
   "datasets": [
     {
-      "id": "ai4privacy-pii-masking",
-      "source": "https://huggingface.co/datasets/ai4privacy/pii-masking-300k",
+      "id": "gretel-synthetic-pii",
+      "source": "https://huggingface.co/datasets/gretelai/synthetic_pii_finance_multilingual",
       "target": "2000 held-out labelled text samples",
       "measures": ["PII precision", "PII recall", "placeholder masking"],
-      "localDirectory": "shared/eval/external/ai4privacy-pii-masking",
-      "licenceReviewRequired": true,
-      "acquisition": "Use the opt-in importer only after the team has reviewed the AI4Privacy terms and obtained any required written approval."
+      "localDirectory": "shared/eval/external/gretel-pii",
+      "licenceReviewRequired": false,
+      "acquisition": "Run npm run benchmark:pii. The importer reads the Apache-2.0 test split and writes a local-only fixture."
     },
     {
       "id": "wider-face",

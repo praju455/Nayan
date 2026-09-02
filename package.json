@@ -10,8 +10,9 @@
     "lint": "npm run lint --workspaces --if-present",
     "evaluate": "node scripts/run-evaluation.mjs",
     "benchmark:status": "node scripts/benchmark-status.mjs",
-    "benchmark:ai4privacy": "node scripts/prepare-ai4privacy-benchmark.mjs --accept-license",
+    "benchmark:pii": "node scripts/prepare-pii-benchmark.mjs",
     "benchmark:wider-face": "node scripts/prepare-wider-face-benchmark.mjs --accept-license",
+    "evaluate:pii": "node scripts/evaluate-gretel-pii.mjs",
     "models:verify": "node scripts/verify-model-manifest.mjs"
   },
   "engines": { "node": ">=20" }
