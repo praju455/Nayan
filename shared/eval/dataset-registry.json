@@ -8,7 +8,8 @@
       "target": "2000 held-out labelled text samples",
       "measures": ["PII precision", "PII recall", "placeholder masking"],
       "localDirectory": "shared/eval/external/ai4privacy-pii-masking",
-      "licenceReviewRequired": true
+      "licenceReviewRequired": true,
+      "acquisition": "Use the opt-in importer only after the team has reviewed the AI4Privacy terms and obtained any required written approval."
     },
     {
       "id": "wider-face",

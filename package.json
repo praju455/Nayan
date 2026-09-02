@@ -10,6 +10,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "evaluate": "node scripts/run-evaluation.mjs",
     "benchmark:status": "node scripts/benchmark-status.mjs",
+    "benchmark:ai4privacy": "node scripts/prepare-ai4privacy-benchmark.mjs --accept-license",
     "models:verify": "node scripts/verify-model-manifest.mjs"
   },
   "engines": { "node": ">=20" }
