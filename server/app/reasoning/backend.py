@@ -1,8 +1,9 @@
 import json
 import os
 import re
-from collections.abc import Sequence
 from typing import Protocol
+from ipaddress import ip_address
+from urllib.parse import urlparse
 
 import httpx
 
@@ -79,33 +80,8 @@ class SafeRuleReasoningBackend:
         return ActionResponse(action="done", confidence=0.75, reason="No safe grounded action was found.")
 
 
-class GeminiReasoningBackend:
-    """Gemini planner that receives only the server-built sanitized context."""
-
-    def __init__(self, api_key: str, model: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
-        self.api_key = api_key
-        self.model = model
-        self.transport = transport
-
-    async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
-        body = {
-            "systemInstruction": {"parts": [{"text": PLANNER_SYSTEM_PROMPT}]},
-            "contents": [{"role": "user", "parts": [{"text": reasoning_context}]}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
-        }
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
-        try:
-            async with httpx.AsyncClient(timeout=20, transport=self.transport) as client:
-                response = await client.post(endpoint, params={"key": self.api_key}, json=body)
-                response.raise_for_status()
-            text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-            return parse_action(text)
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, ProviderUnavailable) as error:
-            raise ProviderUnavailable("Gemini planner is unavailable or returned an unsafe response.") from error
-
-
 class GroqReasoningBackend:
-    """Groq fallback planner using JSON mode and the same constrained schema."""
+    """Connected open-weight planner using Groq JSON mode."""
 
     def __init__(self, api_key: str, model: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.api_key = api_key
@@ -132,20 +108,50 @@ class GroqReasoningBackend:
             raise ProviderUnavailable("Groq planner is unavailable or returned an unsafe response.") from error
 
 
-class FallbackReasoningBackend:
-    """Uses Gemini first and Groq only when Gemini fails closed."""
+def validated_local_ollama_url(base_url: str) -> str:
+    """Accept only loopback or RFC1918 Ollama endpoints for sovereign mode."""
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("NAYAN_OLLAMA_BASE_URL must be a plain http(s) localhost or private-network URL.")
 
-    def __init__(self, backends: Sequence[ReasoningBackend]) -> None:
-        self.backends = tuple(backends)
+    host = parsed.hostname
+    if host != "localhost":
+        try:
+            address = ip_address(host)
+        except ValueError as error:
+            raise ValueError("NAYAN_OLLAMA_BASE_URL must use localhost or a literal private-network IP address.") from error
+        if not (address.is_loopback or address.is_private):
+            raise ValueError("NAYAN_OLLAMA_BASE_URL must not point to a public host.")
+
+    return base_url.rstrip("/")
+
+
+class OllamaReasoningBackend:
+    """Sovereign planner using a locally reachable Ollama server."""
+
+    def __init__(self, base_url: str, model: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
+        self.base_url = validated_local_ollama_url(base_url)
+        self.model = model
+        self.transport = transport
 
     async def next_action(self, scene: SanitizedContext, reasoning_context: str) -> ActionResponse:
-        failures: list[str] = []
-        for backend in self.backends:
-            try:
-                return await backend.next_action(scene, reasoning_context)
-            except ProviderUnavailable as error:
-                failures.append(str(error))
-        raise ProviderUnavailable("All configured cloud planners failed closed: " + " | ".join(failures))
+        body = {
+            "model": self.model,
+            "stream": False,
+            "format": ActionResponse.model_json_schema(),
+            "options": {"temperature": 0},
+            "messages": [
+                {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
+                {"role": "user", "content": reasoning_context},
+            ],
+        }
+        try:
+            async with httpx.AsyncClient(timeout=45, transport=self.transport) as client:
+                response = await client.post(f"{self.base_url}/api/chat", json=body)
+                response.raise_for_status()
+            return parse_action(response.json()["message"]["content"])
+        except (httpx.HTTPError, KeyError, TypeError, ProviderUnavailable) as error:
+            raise ProviderUnavailable("Local Ollama planner is unavailable or returned an unsafe response.") from error
 
 
 def configured_backend() -> ReasoningBackend:
@@ -153,13 +159,16 @@ def configured_backend() -> ReasoningBackend:
     if mode == "rule":
         return SafeRuleReasoningBackend()
 
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    groq_key = os.getenv("GROQ_API_KEY")
-    backends: list[ReasoningBackend] = []
-    if mode in {"cloud", "gemini"} and gemini_key:
-        backends.append(GeminiReasoningBackend(gemini_key, os.getenv("NAYAN_GEMINI_MODEL", "gemini-2.5-flash")))
-    if mode in {"cloud", "gemini", "groq"} and groq_key:
-        backends.append(GroqReasoningBackend(groq_key, os.getenv("NAYAN_GROQ_MODEL", "llama-3.3-70b-versatile")))
-    if not backends:
-        raise RuntimeError("Cloud reasoning requires GEMINI_API_KEY, GROQ_API_KEY, or both. Use NAYAN_REASONING_BACKEND=rule for the offline demo.")
-    return backends[0] if len(backends) == 1 else FallbackReasoningBackend(backends)
+    if mode == "groq":
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError("Groq reasoning requires GROQ_API_KEY. Use NAYAN_REASONING_BACKEND=rule for the offline demo.")
+        return GroqReasoningBackend(api_key, os.getenv("NAYAN_GROQ_MODEL", "llama-3.3-70b-versatile"))
+
+    if mode == "ollama":
+        model = os.getenv("NAYAN_OLLAMA_MODEL")
+        if not model:
+            raise RuntimeError("Ollama reasoning requires NAYAN_OLLAMA_MODEL to name an installed open-weight model.")
+        return OllamaReasoningBackend(os.getenv("NAYAN_OLLAMA_BASE_URL", "http://127.0.0.1:11434"), model)
+
+    raise RuntimeError("NAYAN_REASONING_BACKEND must be one of: rule, groq, ollama.")

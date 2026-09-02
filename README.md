@@ -46,7 +46,7 @@ Raw screenshots, DOM/HTML, OCR text, plaintext PII, passwords, and token-vault v
 - PII recognition for email, phone, card (Luhn), PAN, Aadhaar (Verhoeff), IP, DOB, and bank account, plus deterministic DOM field rules.
 - Task-scoped local token vault: the planner sees `<EMAIL_…>`, never the source email.
 - Separate sanitized-output construction, pixel masking/face blur, redaction verification, and a key/value payload guard.
-- FastAPI schema gate, injection-aware context builder, offline rule planner, Groq-hosted open-weight planner support, and server action validation.
+- FastAPI schema gate, injection-aware context builder, Groq connected planner, Ollama local planner, offline rule planner, and server action validation.
 - Browser action validation, confirmation-gated submit flow, safe DOM actions, payload inspector, and real-application demo guidance.
 - Generated benchmark results and judge-facing dashboard.
 
@@ -61,7 +61,7 @@ Raw screenshots, DOM/HTML, OCR text, plaintext PII, passwords, and token-vault v
 | Transformers.js + ONNX Runtime Web | Runs local models in-browser, preferring WebGPU with WASM fallback. | [Transformers.js](https://github.com/huggingface/transformers.js) and ONNX Runtime Web |
 | Tesseract OCR | Reads eligible image/canvas text locally. | Tesseract.js |
 | Open-weight planner | Reasons from sanitized context only in connected mode. | [Groq API](https://console.groq.com/docs/api-reference) hosting a Llama- or Qwen-family model |
-| Local planner (roadmap) | Keeps even sanitized context on the device or local network. | Gemma, Qwen, or Llama through Ollama |
+| Ollama local planner | Keeps sanitized context on the device or approved private network. | Gemma, Qwen, or Llama through Ollama |
 
 No AI provider receives the raw page, raw screenshot, or plaintext PII.
 
@@ -130,6 +130,8 @@ npm run test
 npm run lint
 cd server && .venv/bin/pytest -q
 cd .. && npm run evaluate
+npm run benchmark:status
+npm run models:verify
 npm run dev --workspace=@nayan/benchmark-dashboard
 ```
 
@@ -158,7 +160,15 @@ NAYAN_GROQ_MODEL=llama-3.3-70b-versatile
 
 The server sends only its already-sanitized reasoning context to Groq. A malformed response or invalid action stops the task rather than bypassing validation. The planner must return one action matching `shared/schemas/action-response.schema.json`; the server and browser each validate it before execution. Record the exact model name, source, version, licence, and API configuration used in the final demo.
 
-The planned sovereign mode uses an open-weight Gemma, Qwen, or Llama model through Ollama on `localhost` or an approved local network. It is not yet wired into the runtime. The repository still contains a transitional Gemini adapter from an earlier prototype; it is not part of the target architecture. Copy `server/.env.example` to a local ignored `.env` only if your launch setup loads environment files; never place keys in the extension.
+Sovereign mode uses an open-weight Gemma, Qwen, or Llama model through Ollama on `localhost` or an approved private network:
+
+```bash
+NAYAN_REASONING_BACKEND=ollama
+NAYAN_OLLAMA_BASE_URL=http://127.0.0.1:11434
+NAYAN_OLLAMA_MODEL=your-installed-open-weight-model
+```
+
+Nayan rejects public Ollama endpoints, so this mode cannot silently turn into a public-cloud request. Copy `server/.env.example` to a local ignored `.env` only if your launch setup loads environment files; never place keys in the extension.
 
 ## Never transmitted
 
@@ -180,15 +190,15 @@ The included planner is deterministic unless Groq is configured. Hosted reasonin
 
 - Chrome/Firefox extension, local screenshot and DOM/ARIA perception, and WebGPU-first/WASM-fallback inference.
 - Local PII and face protection: passwords are blacked out, faces are blurred, and PII is replaced with task-scoped placeholders before the privacy boundary.
-- Strict FastAPI schema gate, Groq open-weight-planner support from sanitized context, and browser-side live-target/action validation.
+- Strict FastAPI schema gate, Groq and Ollama open-weight planner modes from sanitized context, and browser-side live-target/action validation.
 - Confirmation gates for consequential actions such as send, submit, delete, and pay; visual-only regions are never executable.
 - Reproducible synthetic regression evaluation and dashboard for grounding, PII, redaction, package size, and local scan latency.
 - A real-application demo path using a test Gmail account or public GitHub/docs page; the mock portal is only an offline regression fixture.
 
 ### Next steps
 
-- Record the exact source URL, version, licence, and checksum for packaged MobileNetV3 and UltraFace binaries.
-- Use an exact open-weight Groq model in the live demo, remove the transitional Gemini adapter, and add the optional Ollama sovereign mode.
+- Replace or document the source URL, version, and licence for packaged MobileNetV3 and UltraFace binaries; `npm run models:verify` already checks their integrity hashes.
+- Use exact open-weight Groq and Ollama models in live demos, with recorded source, version, licence, and configuration.
 - Build the labelled real-world benchmark set for screenshots, PII, faces, and UI grounding using the datasets above plus test-account captures.
 - Measure latency and resource use on the judging laptop, improve the visual detector toward a dedicated OmniParser-style UI detector, and test on Chrome and Firefox devices.
 

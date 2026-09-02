@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "purpose": "External benchmark acquisition registry. Dataset files remain local and are never committed.",
+  "datasets": [
+    {
+      "id": "ai4privacy-pii-masking",
+      "source": "https://huggingface.co/datasets/ai4privacy/pii-masking-300k",
+      "target": "2000 held-out labelled text samples",
+      "measures": ["PII precision", "PII recall", "placeholder masking"],
+      "localDirectory": "shared/eval/external/ai4privacy-pii-masking",
+      "licenceReviewRequired": true
+    },
+    {
+      "id": "wider-face",
+      "source": "https://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/",
+      "target": "500 validation images with face boxes",
+      "measures": ["face detection recall", "face-redaction coverage"],
+      "localDirectory": "shared/eval/external/wider-face",
+      "licenceReviewRequired": true
+    },
+    {
+      "id": "groundcua",
+      "source": "https://github.com/ServiceNow/GroundCUA",
+      "target": "300 screenshot/action examples",
+      "measures": ["UI grounding accuracy", "target localization"],
+      "localDirectory": "shared/eval/external/groundcua",
+      "licenceReviewRequired": true
+    },
+    {
+      "id": "osworld",
+      "source": "https://github.com/xlang-ai/OSWorld",
+      "target": "Held-out end-to-end browser workflows",
+      "measures": ["perceive-sanitize-plan-act completion", "safe failure"],
+      "localDirectory": "shared/eval/external/osworld",
+      "licenceReviewRequired": true
+    },
+    {
+      "id": "nayan-real-web",
+      "source": "Team-created test-account captures only",
+      "target": "50-100 consented or synthetic Chrome screenshots",
+      "measures": ["real-site PII redaction", "UI grounding", "latency", "resource use"],
+      "localDirectory": "shared/eval/real-web-raw",
+      "licenceReviewRequired": false
+    }
+  ]
+}

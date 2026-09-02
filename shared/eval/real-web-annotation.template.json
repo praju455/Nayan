@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "captureId": "realweb_example_001",
+  "screenshotPath": "shared/eval/real-web-raw/realweb_example_001.png",
+  "provenance": {
+    "application": "test application name",
+    "origin": "https://example.test",
+    "accountType": "test-only",
+    "containsOnlySyntheticOrConsentedData": true
+  },
+  "expectedActions": [
+    {
+      "action": "click",
+      "targetLabel": "Visible safe button",
+      "bbox": [0, 0, 0, 0]
+    }
+  ],
+  "piiRegions": [
+    {
+      "type": "EMAIL",
+      "bbox": [0, 0, 0, 0],
+      "expectedMethod": "tokenize"
+    }
+  ],
+  "faceRegions": [
+    [0, 0, 0, 0]
+  ],
+  "notes": "Template only. Never commit raw personal screenshots or plaintext PII."
+}

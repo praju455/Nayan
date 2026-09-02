@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "models": [
+    {
+      "path": "extension/public/models/mobilenetv3_small.onnx",
+      "purpose": "Local UI-region classification",
+      "sha256": "5e17d4c43de2927ca3f6ab56e46edf44d2d5ef991fa0afc5d1892bbbf65fbf05",
+      "sourceUrl": null,
+      "sourceVersion": null,
+      "licence": "Pending provenance verification",
+      "provenanceStatus": "blocked"
+    },
+    {
+      "path": "extension/public/models/ultraface-rfb-320.onnx",
+      "purpose": "Local face detection for blur redaction",
+      "sha256": "34cd7e60aeff28744c657de7a3dc64e872d506741de66987f3426f2b79f88017",
+      "sourceUrl": null,
+      "sourceVersion": null,
+      "licence": "Pending provenance verification",
+      "provenanceStatus": "blocked"
+    }
+  ]
+}

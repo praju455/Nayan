@@ -8,7 +8,9 @@
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "evaluate": "node scripts/run-evaluation.mjs"
+    "evaluate": "node scripts/run-evaluation.mjs",
+    "benchmark:status": "node scripts/benchmark-status.mjs",
+    "models:verify": "node scripts/verify-model-manifest.mjs"
   },
   "engines": { "node": ">=20" }
 }
