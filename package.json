@@ -12,6 +12,7 @@
     "benchmark:status": "node scripts/benchmark-status.mjs",
     "benchmark:pii": "node scripts/prepare-pii-benchmark.mjs",
     "benchmark:wider-face": "node scripts/prepare-wider-face-benchmark.mjs --accept-license",
+    "benchmark:groundcua": "node scripts/prepare-groundcua-benchmark.mjs --confirm-research-use",
     "evaluate:pii": "node scripts/evaluate-gretel-pii.mjs",
     "models:verify": "node scripts/verify-model-manifest.mjs"
   },

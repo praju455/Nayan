@@ -26,7 +26,8 @@
       "target": "300 screenshot/action examples",
       "measures": ["UI grounding accuracy", "target localization"],
       "localDirectory": "shared/eval/external/groundcua",
-      "licenceReviewRequired": true
+      "licenceReviewRequired": true,
+      "acquisition": "After confirming research/educational use, run npm run benchmark:groundcua. It downloads a deterministic, balanced 300-screenshot local fixture with its labelled UI targets."
     },
     {
       "id": "osworld",
