@@ -32,10 +32,11 @@
     {
       "id": "osworld",
       "source": "https://github.com/xlang-ai/OSWorld",
-      "target": "Held-out end-to-end browser workflows",
+      "target": "40 held-out Chrome workflow specifications",
       "measures": ["perceive-sanitize-plan-act completion", "safe failure"],
       "localDirectory": "shared/eval/external/osworld",
-      "licenceReviewRequired": true
+      "licenceReviewRequired": true,
+      "acquisition": "Run npm run benchmark:osworld to prepare 40 pinned Chrome workflow specifications. Executing them requires the official OSWorld isolated desktop environment and must not run against personal accounts."
     },
     {
       "id": "nayan-real-web",
@@ -43,7 +44,8 @@
       "target": "50-100 consented or synthetic Chrome screenshots",
       "measures": ["real-site PII redaction", "UI grounding", "latency", "resource use"],
       "localDirectory": "shared/eval/real-web-raw",
-      "licenceReviewRequired": false
+      "licenceReviewRequired": false,
+      "acquisition": "Create and annotate 50-100 captures from test accounts only, then run npm run benchmark:real-web. The validator writes an aggregate-only report and rejects non-test-only provenance."
     }
   ]
 }

@@ -13,6 +13,8 @@
     "benchmark:pii": "node scripts/prepare-pii-benchmark.mjs",
     "benchmark:wider-face": "node scripts/prepare-wider-face-benchmark.mjs --accept-license",
     "benchmark:groundcua": "node scripts/prepare-groundcua-benchmark.mjs --confirm-research-use",
+    "benchmark:osworld": "node scripts/prepare-osworld-chrome-workflows.mjs",
+    "benchmark:real-web": "node scripts/validate-real-web-benchmark.mjs",
     "evaluate:pii": "node scripts/evaluate-gretel-pii.mjs",
     "models:verify": "node scripts/verify-model-manifest.mjs"
   },

@@ -181,6 +181,32 @@ npm run benchmark:status
 
 The resulting manifest is designed for grounding evaluation: Nayan receives a screenshot and must identify the labelled UI region. It is not connected to the planner and no screenshot is uploaded by this workflow.
 
+OSWorld is used for end-to-end workflow coverage. This project prepares a deterministic local set of 40 real Chrome task specifications; it does **not** automatically install a virtual machine or execute tasks against your personal browser:
+
+```bash
+npm run benchmark:osworld
+npm run benchmark:status
+```
+
+To run the selected workflows later, use OSWorld's official isolated desktop environment (VMware Fusion on Apple Silicon, or its supported Docker/cloud setup). Connect Nayan only to that disposable test environment, run one workflow at a time, and save only aggregate results and sanitized evidence.
+
+For the controlled real-web set, use actual websites with **test accounts only** (for example, a separate mail account, GitHub test account, or a Google Form with synthetic values). Never use or commit personal sessions. Keep each raw screenshot beside a JSON annotation based on [`shared/eval/real-web-annotation.template.json`](shared/eval/real-web-annotation.template.json), under this ignored local structure:
+
+```text
+shared/eval/real-web-raw/
+  capture-001.png
+  annotations/
+    capture-001.json
+```
+
+After collecting 50–100 captures, run:
+
+```bash
+npm run benchmark:real-web
+```
+
+The validator checks that every capture is marked test-only and synthetic/consented, has a local screenshot and non-empty action/PII labels, then writes only aggregate counts to `shared/eval/results/real-web-validation.json`.
+
 ## Planner modes
 
 The default deterministic `rule` backend runs the offline regression fixture without credentials. Connected mode uses Groq with an **open-weight**, offline-deployable model such as a Llama or Qwen family model:
